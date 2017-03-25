@@ -1,0 +1,39 @@
+name: Example App
+location: beyond
+services:
+  - type: org.apache.brooklyn.entity.proxy.nginx.NginxController
+    id: nginx
+    name: My Load Balancer (nginx)
+    brooklyn.config:
+      loadbalancer.serverpool: $brooklyn:entity("cluster")
+      nginx.sticky: false
+  - type: org.apache.brooklyn.entity.group.DynamicCluster
+    name: My Cluster
+    id: cluster
+    brooklyn.config:
+      initialSize: 2
+      memberSpec:
+        $brooklyn:entitySpec:
+          type: 'nodejs-node:0.1'
+          name: NodeJS
+          brooklyn.config:
+            nodejs.gitRepo.url: https://github.com/.....
+            nodejs.app.fileName: index.js
+            nodejs.app.name: Test
+            shell.env:
+              MARIADB_HOST: $brooklyn:component("mariadb").attributeWhenReady("host.address")
+          brooklyn.policies:
+          - type: org.apache.brooklyn.policy.ha.ServiceRestarter
+            brooklyn.config:
+              failOnRecurringFailuresInThisDuration: 5m
+          brooklyn.enrichers:
+          - type: org.apache.brooklyn.policy.ha.ServiceFailureDetector
+            brooklyn.config:
+              entityFailed.stabilizationDelay: 30s
+    brooklyn.policies: 
+    - type: org.apache.brooklyn.policy.ha.ServiceReplacer
+  - type: 'mariadb-node:0.1'
+    id: mariadb
+    name: MariaDB
+    brooklyn.config:
+      mariadb.datastore.creation.script.url: https://raw.githubusercontent.com/....

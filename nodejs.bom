@@ -1,0 +1,71 @@
+  brooklyn.catalog:
+    version: "0.1"
+    id: nodejs-node
+    name: nodejs Node
+    iconUrl: "https://nodejs.org/static/images/logo.svg"
+    itemType: entity
+    description: |
+      NodeJS
+    publish:
+      license_code: Apache-2.0
+      overview: README.md
+    item:
+      type: centos-software-process
+      name: nodejs Node
+      brooklyn.parameters:
+        - name: nodejs.gitRepo.url
+          label: "Git Repository URL"
+          description: |
+            The Git repository where the application is hosted
+        - name: nodejs.app.fileName
+          label: "File Name of the NodeJS App"
+          description: |
+            The NodeJS application file to start
+        - name: nodejs.app.name
+          label: "Node JS Application Name"
+          description: |
+            The name of the NodeJS application
+        - name: nodejs.workingDir
+          label: "Working Dir"
+          default: "/tmp"
+        - name: nodejs.http.port
+          label: "NodeJS Port"
+          default: 3000
+
+      brooklyn.config:
+        shell.env:
+            NODEJS_GITREPO_URL: $brooklyn:config("nodejs.gitRepo.url")
+            NODEJS_WORKING_DIR: $brooklyn:config("nodejs.workingDir")
+            NODEJS_APP_FILENAME: $brooklyn:config("nodejs.app.fileName")
+    
+        pre.install.command: |
+          sudo yum update -y
+    
+        install.command: |
+          sudo yum install -y epel-release
+          sudo yum install -y nodejs
+          sudo yum install -y git
+
+        customize.command: |
+          cd ${NODEJS_WORKING_DIR} && git clone ${NODEJS_GITREPO_URL}
+    
+        launch.command: |
+          REPO_NAME=`basename ${NODEJS_GITREPO_URL} .git`
+          cd ${NODEJS_WORKING_DIR}/${REPO_NAME}
+          npm install
+          nohup node ${NODEJS_APP_FILENAME} &
+    
+        checkRunning.command: |
+          pgrep node
+
+        stop.command: |
+          pkill node
+    
+      brooklyn.enrichers:
+      - type: org.apache.brooklyn.enricher.stock.Transformer
+        brooklyn.config:
+          # TODO: There's a better way, I'm sure.
+          uniqueTag: nodejs-port
+          enricher.sourceSensor: nodejs.http.port
+          enricher.targetSensor: $brooklyn:sensor("org.apache.brooklyn.core.entity.Attributes", "http.port")
+          enricher.targetValue: $brooklyn:config("nodejs.http.port")
