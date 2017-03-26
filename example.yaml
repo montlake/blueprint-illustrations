@@ -7,6 +7,11 @@ services:
     brooklyn.config:
       loadbalancer.serverpool: $brooklyn:entity("cluster")
       nginx.sticky: false
+  - type: 'mariadb-node:0.1'
+    id: mariadb
+    name: MariaDB
+    brooklyn.config:
+        mariadb.datastore.creation.script.url: https://raw.githubusercontent.com/....
   - type: org.apache.brooklyn.entity.group.DynamicCluster
     name: My Cluster
     id: cluster
@@ -30,10 +35,33 @@ services:
           - type: org.apache.brooklyn.policy.ha.ServiceFailureDetector
             brooklyn.config:
               entityFailed.stabilizationDelay: 30s
+          brooklyn.initializers:
+          - type: org.apache.brooklyn.core.sensor.ssh.SshCommandSensor
+            brooklyn.config:
+              name: nodejs.cpu.usage
+              command: |
+                  echo $[100-$(vmstat 1 2 |tail -1|awk '{print $15}')]
+              period: 2m
+              targetType: java.lang.Double
+
+    brooklyn.enrichers:
+    - type: org.apache.brooklyn.enricher.stock.Aggregator
+      brooklyn.config:
+        uniqueTag: nodejs-cluster-cpu-average
+        enricher.sourceSensor: $brooklyn:sensor("nodejs.cpu.usage")
+        enricher.targetSensor: $brooklyn:sensor("cluster.cpu.average")
+        enricher.aggregating.fromMembers: true
+        transformation: average
+
     brooklyn.policies: 
     - type: org.apache.brooklyn.policy.ha.ServiceReplacer
-  - type: 'mariadb-node:0.1'
-    id: mariadb
-    name: MariaDB
-    brooklyn.config:
-      mariadb.datastore.creation.script.url: https://raw.githubusercontent.com/....
+    - type: org.apache.brooklyn.policy.autoscaling.AutoScalerPolicy
+      brooklyn.config:
+        metric: $brooklyn:sensor("cluster.cpu.average")
+        metricUpperBound: 60
+        metricLowerBound: 20
+        minPoolSize: 1
+        maxPoolSize: 5
+        resizeUpStabilizationDelay: 2m
+        resizeDownStabilizationDelay: 2m
+
