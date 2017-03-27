@@ -46,3 +46,8 @@ brooklyn.catalog:
       stop.command: |
         sudo systemctl stop mariadb 
 
+    brooklyn.initializers:
+    - type: org.apache.brooklyn.core.sensor.StaticSensor
+      brooklyn.config:
+        name: port
+        static.value: 3306
