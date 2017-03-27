@@ -28,9 +28,11 @@ brooklyn.catalog:
       - name: nodejs.workingDir
         label: "Working Dir"
         default: "/tmp"
-      - name: nodejs.http.port
+      # http.port is the convention for entities used by load balancers.
+      - name: http.port
         label: "NodeJS Port"
         default: 3000
+        type: port
 
     brooklyn.config:
       shell.env:
@@ -60,12 +62,3 @@ brooklyn.catalog:
 
       stop.command: |
         pkill node
-  
-    brooklyn.enrichers:
-    - type: org.apache.brooklyn.enricher.stock.Transformer
-      brooklyn.config:
-        # TODO: There's a better way, I'm sure.
-        uniqueTag: nodejs-port
-        enricher.sourceSensor: nodejs.http.port
-        enricher.targetSensor: $brooklyn:sensor("org.apache.brooklyn.core.entity.Attributes", "http.port")
-        enricher.targetValue: $brooklyn:config("nodejs.http.port")
