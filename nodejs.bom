@@ -57,7 +57,7 @@ brooklyn.catalog:
         git clone ${NODEJS_GITREPO_URL}
         REPO_NAME=`basename ${NODEJS_GITREPO_URL} .git`
         cd ${REPO_NAME}
-        npm install
+        npm --no-color install
 
       launch.command: |
         nohup node ${NODEJS_APP_FILENAME} >console.log 2>&1 &
