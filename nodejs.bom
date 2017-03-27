@@ -17,22 +17,32 @@ brooklyn.catalog:
         label: "Git Repository URL"
         description: |
           The Git repository where the application is hosted
+        constraints:
+          - required
       - name: nodejs.app.fileName
         label: "File Name of the NodeJS App"
         description: |
           The NodeJS application file to start
+        constraints:
+          - required
       - name: nodejs.app.name
         label: "Node JS Application Name"
         description: |
           The name of the NodeJS application
+        constraints:
+          - required
       - name: nodejs.workingDir
         label: "Working Dir"
         default: "/tmp"
+        constraints:
+          - required
       # http.port is the convention for entities used by load balancers.
       - name: http.port
         label: "NodeJS Port"
         default: 3000
         type: port
+        constraints:
+          - required
 
     brooklyn.config:
       shell.env:
