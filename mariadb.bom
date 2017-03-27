@@ -1,48 +1,48 @@
-  brooklyn.catalog:
-    version: "0.1"
-    id: mariadb-node
+brooklyn.catalog:
+  version: "0.1"
+  id: mariadb-node
+  name: MariaDB Node
+  iconUrl: "https://mariadb.com/themes/custom/mariadb/logo.svg"
+  itemType: entity
+  description: |
+    MariaDB
+  publish:
+    license_code: Apache-2.0
+    overview: README.md
+  item:
+    type: centos-software-process
     name: MariaDB Node
-    iconUrl: "https://mariadb.com/themes/custom/mariadb/logo.svg"
-    itemType: entity
-    description: |
-      MariaDB
-    publish:
-      license_code: Apache-2.0
-      overview: README.md
-    item:
-      type: centos-software-process
-      name: MariaDB Node
-      brooklyn.parameters:
-        - name: mariadb.datastore.creation.script.url
-          label: "Datastore Creation Script URL"
-          description: |
-            URL of creation script to use to initialize the datastore
+    brooklyn.parameters:
+      - name: mariadb.datastore.creation.script.url
+        label: "Datastore Creation Script URL"
+        description: |
+          URL of creation script to use to initialize the datastore
 
-      brooklyn.config:
-        shell.env:
-            MARIADB_DATASTORE_CREATION_SCRIPT_URL: $brooklyn:config("mariadb.datastore.creation.script.url")
-    
-        pre.install.command: |
-          sudo yum update -y
-    
-        install.command: |
-          sudo yum install -y mariadb-server
-          sudo systemctl enable mariadb
+    brooklyn.config:
+      shell.env:
+        MARIADB_DATASTORE_CREATION_SCRIPT_URL: $brooklyn:config("mariadb.datastore.creation.script.url")
+  
+      pre.install.command: |
+        sudo yum update -y
+  
+      install.command: |
+        sudo yum install -y mariadb-server
+        sudo systemctl enable mariadb
 
-        customize.command: |
-          if [[ ! -z "${MARIADB_DATASTORE_CREATION_SCRIPT_URL}" ]]; then
-              curl -o /tmp/datastore_creation_script.sql ${MARIADB_DATASTORE_CREATION_SCRIPT_URL}
-              sudo systemctl start mariadb
-              sudo mysql < /tmp/datastore_creation_script.sql
-              sudo systemctl stop mariadb
-          fi
-    
-        launch.command: |
-          sudo systemctl start mariadb
-    
-        checkRunning.command: |
-          pgrep mysqld
+      customize.command: |
+        if [[ ! -z "${MARIADB_DATASTORE_CREATION_SCRIPT_URL}" ]]; then
+            curl -o /tmp/datastore_creation_script.sql ${MARIADB_DATASTORE_CREATION_SCRIPT_URL}
+            sudo systemctl start mariadb
+            sudo mysql < /tmp/datastore_creation_script.sql
+            sudo systemctl stop mariadb
+        fi
+  
+      launch.command: |
+        sudo systemctl start mariadb
+  
+      checkRunning.command: |
+        pgrep mysqld
 
-        stop.command: |
-          sudo systemctl stop mariadb 
+      stop.command: |
+        sudo systemctl stop mariadb 
 
