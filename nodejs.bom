@@ -31,11 +31,6 @@ brooklyn.catalog:
           The name of the NodeJS application
         constraints:
           - required
-      - name: nodejs.workingDir
-        label: "Working Dir"
-        default: "/tmp"
-        constraints:
-          - required
       # http.port is the convention for entities used by load balancers.
       - name: http.port
         label: "NodeJS Port"
@@ -47,7 +42,6 @@ brooklyn.catalog:
     brooklyn.config:
       shell.env:
         NODEJS_GITREPO_URL: $brooklyn:config("nodejs.gitRepo.url")
-        NODEJS_WORKING_DIR: $brooklyn:config("nodejs.workingDir")
         NODEJS_APP_FILENAME: $brooklyn:config("nodejs.app.fileName")
         SERVER_PORT: $brooklyn:attributeWhenReady("http.port")
   
@@ -60,11 +54,11 @@ brooklyn.catalog:
         sudo yum install -y git
 
       customize.command: |
-        cd ${NODEJS_WORKING_DIR} && git clone ${NODEJS_GITREPO_URL}
+        git clone ${NODEJS_GITREPO_URL}
   
       launch.command: |
         REPO_NAME=`basename ${NODEJS_GITREPO_URL} .git`
-        cd ${NODEJS_WORKING_DIR}/${REPO_NAME}
+        cd ${REPO_NAME}
         npm install
         nohup node ${NODEJS_APP_FILENAME} >/dev/null 2>&1 &
 
