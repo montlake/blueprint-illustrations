@@ -53,8 +53,8 @@ brooklyn.catalog:
         REPO_NAME=`basename ${NODEJS_GITREPO_URL} .git`
         cd ${NODEJS_WORKING_DIR}/${REPO_NAME}
         npm install
-        nohup node ${NODEJS_APP_FILENAME} &
-  
+        nohup node ${NODEJS_APP_FILENAME} >/dev/null 2>&1 &
+
       checkRunning.command: |
         pgrep node
 
