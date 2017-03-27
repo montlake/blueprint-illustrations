@@ -1,3 +1,6 @@
+# Run
+# AWS_ACCESS_KEY=<key> AWS_SECRET_KEY=<key> terraform apply
+
 # Specify the provider and access details
 provider "aws" {
   region = "${var.aws_region}"
@@ -106,10 +109,10 @@ resource "aws_instance" "web" {
   # The connection block tells our provisioner how to
   # communicate with the resource (instance)
   connection {
+    # The connection will use the local SSH agent for authentication.
     # The default username for our AMI
     user = "ubuntu"
-
-    # The connection will use the local SSH agent for authentication.
+    private_key = "${file("~/.ssh/id_rsa")}"
   }
 
   instance_type = "m1.small"

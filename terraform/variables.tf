@@ -1,4 +1,5 @@
 variable "public_key_path" {
+  default     = "~/.ssh/id_rsa.pub"
   description = <<DESCRIPTION
 Path to the SSH public key to be used for authentication.
 Ensure this keypair is added to your local SSH agent so provisioners can
@@ -10,6 +11,7 @@ DESCRIPTION
 
 variable "key_name" {
   description = "Desired name of AWS key pair"
+  default = "tfkeypair"
 }
 
 variable "aws_region" {
@@ -19,6 +21,7 @@ variable "aws_region" {
 
 # Ubuntu Precise 12.04 LTS (x64)
 variable "aws_amis" {
+  type = "map"
   default = {
     eu-west-1 = "ami-b1cf19c6"
     us-east-1 = "ami-de7ab6b6"
