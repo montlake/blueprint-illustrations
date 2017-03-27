@@ -31,3 +31,5 @@ brooklyn*.log.*
 *brooklyn-persisted-state/
 
 ignored
+
+terraform/terraform.tfstate*
