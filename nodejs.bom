@@ -49,6 +49,7 @@ brooklyn.catalog:
         NODEJS_GITREPO_URL: $brooklyn:config("nodejs.gitRepo.url")
         NODEJS_WORKING_DIR: $brooklyn:config("nodejs.workingDir")
         NODEJS_APP_FILENAME: $brooklyn:config("nodejs.app.fileName")
+        SERVER_PORT: $brooklyn:attributeWhenReady("http.port")
   
       pre.install.command: |
         sudo yum update -y
@@ -72,3 +73,16 @@ brooklyn.catalog:
 
       stop.command: |
         pkill node
+
+    brooklyn.enrichers:
+    - type: org.apache.brooklyn.enricher.stock.Transformer
+      brooklyn.config:
+        enricher.targetSensor: main.uri
+        enricher.triggerSensors:
+        - host.address
+        - http.port
+        enricher.targetValue:
+          $brooklyn:formatString:
+          - "http://%s:%s"
+          - $brooklyn:attributeWhenReady("host.address")
+          - $brooklyn:attributeWhenReady("http.port")
