@@ -55,12 +55,12 @@ brooklyn.catalog:
 
       customize.command: |
         git clone ${NODEJS_GITREPO_URL}
-  
-      launch.command: |
         REPO_NAME=`basename ${NODEJS_GITREPO_URL} .git`
         cd ${REPO_NAME}
         npm install
-        nohup node ${NODEJS_APP_FILENAME} >/dev/null 2>&1 &
+
+      launch.command: |
+        nohup node ${NODEJS_APP_FILENAME} >console.log 2>&1 &
 
       checkRunning.command: |
         pgrep node
