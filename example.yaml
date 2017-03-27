@@ -7,35 +7,79 @@ services:
     brooklyn.config:
       loadbalancer.serverpool: $brooklyn:entity("cluster")
       nginx.sticky: false
+
   - type: 'mariadb-node:0.1'
     id: mariadb
     name: MariaDB
     brooklyn.config:
-        mariadb.datastore.creation.script.url: https://raw.githubusercontent.com/....
+      mariadb.datastore.creation.script.url: https://raw.githubusercontent.com/justinThompson/todo-app/master/db-creation-script.sql
+
+    # Values set in db-creation-script.sql. Could be injected.
+    brooklyn.initializers:
+    - type: org.apache.brooklyn.core.sensor.StaticSensor
+      brooklyn.config:
+        name: db.user
+        static.value: brooklyn
+    - type: org.apache.brooklyn.core.sensor.StaticSensor
+      brooklyn.config:
+        name: db.password
+        static.value: br00k11n
+    - type: org.apache.brooklyn.core.sensor.StaticSensor
+      brooklyn.config:
+        name: db.name
+        # The database is called 'todo'
+        static.value: todo
+
   - type: org.apache.brooklyn.entity.group.DynamicCluster
     name: My Cluster
     id: cluster
     brooklyn.config:
       initialSize: 2
       memberSpec:
+
         $brooklyn:entitySpec:
           type: 'nodejs-node:0.1'
           name: NodeJS
           brooklyn.config:
-            nodejs.gitRepo.url: https://github.com/.....
-            nodejs.app.fileName: index.js
-            nodejs.app.name: Test
+            nodejs.gitRepo.url: https://github.com/justinThompson/todo-app.git
+            nodejs.app.fileName: app.js
+            nodejs.app.name: Todo App
             shell.env:
-              MARIADB_HOST: $brooklyn:component("mariadb").attributeWhenReady("host.address")
+              DB_HOST: $brooklyn:component("mariadb").attributeWhenReady("host.address")
+              DB_PORT: $brooklyn:component("mariadb").attributeWhenReady("port")
+              DB_USER: $brooklyn:component("mariadb").attributeWhenReady("db.user")
+              DB_PASSWORD: $brooklyn:component("mariadb").attributeWhenReady("db.password")
+              DB_NAME: $brooklyn:component("mariadb").attributeWhenReady("db.name")
+
           brooklyn.policies:
           - type: org.apache.brooklyn.policy.ha.ServiceRestarter
             brooklyn.config:
               failOnRecurringFailuresInThisDuration: 5m
+
           brooklyn.enrichers:
+          - type: org.apache.brooklyn.enricher.stock.Transformer
+            brooklyn.config:
+              enricher.targetSensor: metrics.uri
+              enricher.triggerSensors:
+              - host.address
+              enricher.targetValue:
+                $brooklyn:formatString:
+                # todo: inject
+                - "http://%s:8091/metrics"
+                - $brooklyn:attributeWhenReady("host.address")
           - type: org.apache.brooklyn.policy.ha.ServiceFailureDetector
             brooklyn.config:
               entityFailed.stabilizationDelay: 30s
+
           brooklyn.initializers:
+          # Note: global.all.rate.count is only published after the first request.
+          # HttpRequestSensor repeatedly logs errors to the info log until that point.
+          - type: org.apache.brooklyn.core.sensor.http.HttpRequestSensor
+            brooklyn.config:
+              uri: $brooklyn:attributeWhenReady("metrics.uri")
+              jsonPath: $.global.all.rate.count
+              name: rateCount
+              period: 2s
           - type: org.apache.brooklyn.core.sensor.ssh.SshCommandSensor
             brooklyn.config:
               name: nodejs.cpu.usage
@@ -64,4 +108,3 @@ services:
         maxPoolSize: 5
         resizeUpStabilizationDelay: 2m
         resizeDownStabilizationDelay: 2m
-

@@ -61,7 +61,7 @@ brooklyn.catalog:
         npm --no-color install
 
       launch.command: |
-        nohup node app/${NODEJS_APP_FILENAME} >console.log 2>&1 &
+        nohup node app/${NODEJS_APP_FILENAME} >>console.log 2>&1 &
 
       checkRunning.command: |
         pgrep node
