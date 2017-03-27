@@ -16,8 +16,10 @@ brooklyn.catalog:
       - name: nodejs.gitRepo.url
         label: "Git Repository URL"
         description: |
-          The Git repository where the application is hosted
+          The Git repository where the application is hosted that will be cloned when
+          installing the entity.
         constraints:
+          # Fail if not given.
           - required
       - name: nodejs.app.fileName
         label: "File Name of the NodeJS App"
@@ -34,7 +36,7 @@ brooklyn.catalog:
       # http.port is the convention for entities used by load balancers.
       - name: http.port
         label: "NodeJS Port"
-        default: 3000
+        default: 8000
         type: port
         constraints:
           - required
@@ -44,23 +46,22 @@ brooklyn.catalog:
         NODEJS_GITREPO_URL: $brooklyn:config("nodejs.gitRepo.url")
         NODEJS_APP_FILENAME: $brooklyn:config("nodejs.app.fileName")
         SERVER_PORT: $brooklyn:attributeWhenReady("http.port")
-  
+
       pre.install.command: |
         sudo yum update -y
-  
+
       install.command: |
         sudo yum install -y epel-release
         sudo yum install -y nodejs
         sudo yum install -y git
 
       customize.command: |
-        git clone ${NODEJS_GITREPO_URL}
-        REPO_NAME=`basename ${NODEJS_GITREPO_URL} .git`
-        cd ${REPO_NAME}
+        git clone --depth 1 ${NODEJS_GITREPO_URL} app
+        cd app
         npm --no-color install
 
       launch.command: |
-        nohup node ${NODEJS_APP_FILENAME} >console.log 2>&1 &
+        nohup node app/${NODEJS_APP_FILENAME} >console.log 2>&1 &
 
       checkRunning.command: |
         pgrep node
