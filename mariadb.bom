@@ -23,8 +23,10 @@ brooklyn.catalog:
         MARIADB_DATASTORE_CREATION_SCRIPT_URL: $brooklyn:config("mariadb.datastore.creation.script.url")
   
       pre.install.command: |
+        sudo systemctl stop firewalld
+        sudo systemctl disable firewalld
         sudo yum update -y
-  
+
       install.command: |
         sudo yum install -y mariadb-server
         sudo systemctl enable mariadb
@@ -51,3 +53,4 @@ brooklyn.catalog:
       brooklyn.config:
         name: port
         static.value: 3306
+        targetType: java.lang.Integer
