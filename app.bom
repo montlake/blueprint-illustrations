@@ -1,6 +1,9 @@
 brooklyn.catalog:
   version: "0.1"
 
+  brooklyn.libraries:
+  - http://artifactory.cloudsoftcorp.com/artifactory/libs-release-local/io/cloudsoft/amp/amp-networking/1.1.0/amp-networking-1.1.0.jar
+
   items:
   - id: example-app
     itemType: template
@@ -14,13 +17,22 @@ brooklyn.catalog:
           brooklyn.config:
             loadbalancer.serverpool: $brooklyn:entity("cluster")
             nginx.sticky: false
+          brooklyn.initializers:
+          - type: io.cloudsoft.amp.networking.NetworkSecurityCustomizer
+            brooklyn.config:
+              networks:
+              - frontend
+              - public
+              networks-ingress:
+              - network: public
+                exposing:
+                - proxy.http.port
 
         - type: 'mariadb-node:0.1'
           id: mariadb
           name: MariaDB
           brooklyn.config:
             mariadb.datastore.creation.script.url: https://raw.githubusercontent.com/justinThompson/todo-app/master/db-creation-script.sql
-
           # Values set in db-creation-script.sql. Could be injected.
           brooklyn.initializers:
           - type: org.apache.brooklyn.core.sensor.StaticSensor
@@ -36,6 +48,14 @@ brooklyn.catalog:
               name: db.name
               # The database is called 'todo'
               static.value: todo
+          - type: io.cloudsoft.amp.networking.NetworkSecurityCustomizer
+            brooklyn.config:
+              networks:
+              - backend
+              networks-ingress:
+              - network: appservers
+                exposing:
+                - port
 
         - type: org.apache.brooklyn.entity.group.DynamicCluster
           name: My Cluster
@@ -94,6 +114,14 @@ brooklyn.catalog:
                         echo $[100-$(vmstat 1 2 |tail -1|awk '{print $15}')]
                     period: 2m
                     targetType: java.lang.Double
+                - type: io.cloudsoft.amp.networking.NetworkSecurityCustomizer
+                  brooklyn.config:
+                    networks:
+                    - appservers
+                    networks-ingress:
+                    - network: frontend
+                      exposing:
+                      - http.port
 
           brooklyn.enrichers:
           - type: org.apache.brooklyn.enricher.stock.Aggregator
