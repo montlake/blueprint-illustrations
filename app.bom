@@ -72,7 +72,7 @@ brooklyn.catalog:
                   nodejs.app.fileName: app.js
                   nodejs.app.name: Todo App
                   shell.env:
-                    DB_HOST: $brooklyn:component("mariadb").attributeWhenReady("host.address")
+                    DB_HOST: $brooklyn:component("mariadb").attributeWhenReady("host.subnet.address")
                     DB_PORT: $brooklyn:component("mariadb").attributeWhenReady("port")
                     DB_USER: $brooklyn:component("mariadb").attributeWhenReady("db.user")
                     DB_PASSWORD: $brooklyn:component("mariadb").attributeWhenReady("db.password")
