@@ -24,6 +24,8 @@ brooklyn.catalog:
               - frontend
               - public
               networks-ingress:
+              # Note that the metrics endpoint isn't exposed, meaning that the sensitive data
+              # is only visible to the management network.
               - network: public
                 exposing:
                 - proxy.http.port
