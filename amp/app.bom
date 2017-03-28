@@ -5,159 +5,176 @@ brooklyn.catalog:
   - http://artifactory.cloudsoftcorp.com/artifactory/libs-release-local/io/cloudsoft/amp/amp-networking/1.1.0/amp-networking-1.1.0.jar
 
   items:
+
+  - id: app-load-balancer
+    itemType: entity
+    item:
+      type: org.apache.brooklyn.entity.proxy.nginx.NginxController
+      id: nginx
+      name: My Load Balancer (nginx)
+      brooklyn.config:
+        # Expects to be run in an app with an entity whose id is cluster.
+        loadbalancer.serverpool: $brooklyn:entity("cluster")
+        nginx.sticky: false
+
+  - id: app-database
+    itemType: entity
+    item:
+      type: 'mariadb-node:0.1'
+      id: mariadb
+      name: MariaDB
+      brooklyn.config:
+        mariadb.datastore.creation.script.url: https://raw.githubusercontent.com/justinThompson/todo-app/master/db-creation-script.sql
+      # Values set in db-creation-script.sql. Could be injected.
+      brooklyn.initializers:
+      - type: org.apache.brooklyn.core.sensor.StaticSensor
+        brooklyn.config:
+          name: db.user
+          static.value: brooklyn
+      - type: org.apache.brooklyn.core.sensor.StaticSensor
+        brooklyn.config:
+          name: db.password
+          static.value: br00k11n
+      - type: org.apache.brooklyn.core.sensor.StaticSensor
+        brooklyn.config:
+          name: db.name
+          # The database is called 'todo'
+          static.value: todo
+
+  - id: app-web-member
+    itemType: entity
+    item:
+      type: 'nodejs-node:0.1'
+      name: NodeJS
+      brooklyn.config:
+        nodejs.gitRepo.url: https://github.com/justinThompson/todo-app.git
+        nodejs.app.fileName: app.js
+        nodejs.app.name: Todo App
+        shell.env:
+          DB_HOST: $brooklyn:component("mariadb").attributeWhenReady("host.subnet.address")
+          DB_PORT: $brooklyn:component("mariadb").attributeWhenReady("port")
+          DB_USER: $brooklyn:component("mariadb").attributeWhenReady("db.user")
+          DB_PASSWORD: $brooklyn:component("mariadb").attributeWhenReady("db.password")
+          DB_NAME: $brooklyn:component("mariadb").attributeWhenReady("db.name")
+
+      brooklyn.policies:
+      - type: org.apache.brooklyn.policy.ha.ServiceRestarter
+        brooklyn.config:
+          failOnRecurringFailuresInThisDuration: 5m
+
+      brooklyn.enrichers:
+      - type: org.apache.brooklyn.enricher.stock.Transformer
+        brooklyn.config:
+          enricher.targetSensor: metrics.uri
+          enricher.triggerSensors:
+          - host.address
+          enricher.targetValue:
+            $brooklyn:formatString:
+            # todo: inject
+            - "http://%s:8091/metrics"
+            - $brooklyn:attributeWhenReady("host.address")
+      - type: org.apache.brooklyn.policy.ha.ServiceFailureDetector
+        brooklyn.config:
+          entityFailed.stabilizationDelay: 30s
+
+      brooklyn.initializers:
+      # Note: metric values are only published after the first request.
+      # HttpRequestSensor repeatedly logs errors to the info log until that point.
+      - type: org.apache.brooklyn.core.sensor.http.HttpRequestSensor
+        brooklyn.config:
+          uri: $brooklyn:attributeWhenReady("metrics.uri")
+          jsonPath: $.method.post.rate.m1
+          name: nodejs.metrics.create
+          period: 5s
+          targetType: java.lang.Double
+      - type: org.apache.brooklyn.core.sensor.http.HttpRequestSensor
+        brooklyn.config:
+          uri: $brooklyn:attributeWhenReady("metrics.uri")
+          jsonPath: $.method.get.rate.m1
+          name: nodejs.metrics.read
+          period: 5s
+          targetType: java.lang.Double
+      - type: org.apache.brooklyn.core.sensor.http.HttpRequestSensor
+        brooklyn.config:
+          uri: $brooklyn:attributeWhenReady("metrics.uri")
+          jsonPath: $.method.put.rate.m1
+          name: nodejs.metrics.update
+          period: 5s
+          targetType: java.lang.Double
+      - type: org.apache.brooklyn.core.sensor.http.HttpRequestSensor
+        brooklyn.config:
+          uri: $brooklyn:attributeWhenReady("metrics.uri")
+          jsonPath: $.method.delete.rate.m1
+          name: nodejs.metrics.delete
+          period: 5s
+          targetType: java.lang.Double
+
+  # Incorporates the components above and includes network security rules on each
+  # node and scaling policies on the cluster.
   - id: example-app
     itemType: template
     item:
       name: Example App
       location: beyond
       services:
-        - type: org.apache.brooklyn.entity.proxy.nginx.NginxController
-          id: nginx
-          name: My Load Balancer (nginx)
+      - type: app-load-balancer
+        brooklyn.initializers:
+        - type: io.cloudsoft.amp.networking.NetworkSecurityCustomizer
           brooklyn.config:
-            loadbalancer.serverpool: $brooklyn:entity("cluster")
-            nginx.sticky: false
-          brooklyn.initializers:
-          - type: io.cloudsoft.amp.networking.NetworkSecurityCustomizer
-            brooklyn.config:
-              networks:
-              - frontend
-              - public
-              networks-ingress:
-              # Note that the metrics endpoint isn't exposed, meaning that the sensitive data
-              # is only visible to the management network.
-              - network: public
-                exposing:
-                - proxy.http.port
+            networks:
+            - frontend
+            - public
+            networks-ingress:
+            # Note that the metrics endpoint isn't exposed, meaning that the sensitive data
+            # is only visible to the management network.
+            - network: public
+              exposing:
+              - proxy.http.port
 
-        - type: 'mariadb-node:0.1'
-          id: mariadb
-          name: MariaDB
+      - type: app-database
+        brooklyn.initializers:
+        - type: io.cloudsoft.amp.networking.NetworkSecurityCustomizer
           brooklyn.config:
-            mariadb.datastore.creation.script.url: https://raw.githubusercontent.com/justinThompson/todo-app/master/db-creation-script.sql
-          # Values set in db-creation-script.sql. Could be injected.
-          brooklyn.initializers:
-          - type: org.apache.brooklyn.core.sensor.StaticSensor
-            brooklyn.config:
-              name: db.user
-              static.value: brooklyn
-          - type: org.apache.brooklyn.core.sensor.StaticSensor
-            brooklyn.config:
-              name: db.password
-              static.value: br00k11n
-          - type: org.apache.brooklyn.core.sensor.StaticSensor
-            brooklyn.config:
-              name: db.name
-              # The database is called 'todo'
-              static.value: todo
-          - type: io.cloudsoft.amp.networking.NetworkSecurityCustomizer
-            brooklyn.config:
-              networks:
-              - backend
-              networks-ingress:
-              - network: appservers
-                exposing:
-                - port
+            networks:
+            - backend
+            networks-ingress:
+            - network: appservers
+              exposing:
+              - port
 
-        - type: org.apache.brooklyn.entity.group.DynamicCluster
-          name: My Cluster
-          id: cluster
-          brooklyn.config:
-            initialSize: 2
-            memberSpec:
-
-              $brooklyn:entitySpec:
-                type: 'nodejs-node:0.1'
-                name: NodeJS
+      - type: org.apache.brooklyn.entity.group.DynamicCluster
+        name: My Cluster
+        id: cluster
+        brooklyn.config:
+          initialSize: 2
+          memberSpec:
+            $brooklyn:entitySpec:
+              type: app-web-member
+              brooklyn.initializers:
+              - type: io.cloudsoft.amp.networking.NetworkSecurityCustomizer
                 brooklyn.config:
-                  nodejs.gitRepo.url: https://github.com/justinThompson/todo-app.git
-                  nodejs.app.fileName: app.js
-                  nodejs.app.name: Todo App
-                  shell.env:
-                    DB_HOST: $brooklyn:component("mariadb").attributeWhenReady("host.subnet.address")
-                    DB_PORT: $brooklyn:component("mariadb").attributeWhenReady("port")
-                    DB_USER: $brooklyn:component("mariadb").attributeWhenReady("db.user")
-                    DB_PASSWORD: $brooklyn:component("mariadb").attributeWhenReady("db.password")
-                    DB_NAME: $brooklyn:component("mariadb").attributeWhenReady("db.name")
-
-                brooklyn.policies:
-                - type: org.apache.brooklyn.policy.ha.ServiceRestarter
-                  brooklyn.config:
-                    failOnRecurringFailuresInThisDuration: 5m
-
-                brooklyn.enrichers:
-                - type: org.apache.brooklyn.enricher.stock.Transformer
-                  brooklyn.config:
-                    enricher.targetSensor: metrics.uri
-                    enricher.triggerSensors:
-                    - host.address
-                    enricher.targetValue:
-                      $brooklyn:formatString:
-                      # todo: inject
-                      - "http://%s:8091/metrics"
-                      - $brooklyn:attributeWhenReady("host.address")
-                - type: org.apache.brooklyn.policy.ha.ServiceFailureDetector
-                  brooklyn.config:
-                    entityFailed.stabilizationDelay: 30s
-
-                brooklyn.initializers:
-                # Note: metric values are only published after the first request.
-                # HttpRequestSensor repeatedly logs errors to the info log until that point.
-                - type: org.apache.brooklyn.core.sensor.http.HttpRequestSensor
-                  brooklyn.config:
-                    uri: $brooklyn:attributeWhenReady("metrics.uri")
-                    jsonPath: $.method.post.rate.m1
-                    name: nodejs.metrics.create
-                    period: 5s
-                    targetType: java.lang.Double
-                - type: org.apache.brooklyn.core.sensor.http.HttpRequestSensor
-                  brooklyn.config:
-                    uri: $brooklyn:attributeWhenReady("metrics.uri")
-                    jsonPath: $.method.get.rate.m1
-                    name: nodejs.metrics.read
-                    period: 5s
-                    targetType: java.lang.Double
-                - type: org.apache.brooklyn.core.sensor.http.HttpRequestSensor
-                  brooklyn.config:
-                    uri: $brooklyn:attributeWhenReady("metrics.uri")
-                    jsonPath: $.method.put.rate.m1
-                    name: nodejs.metrics.update
-                    period: 5s
-                    targetType: java.lang.Double
-                - type: org.apache.brooklyn.core.sensor.http.HttpRequestSensor
-                  brooklyn.config:
-                    uri: $brooklyn:attributeWhenReady("metrics.uri")
-                    jsonPath: $.method.delete.rate.m1
-                    name: nodejs.metrics.delete
-                    period: 5s
-                    targetType: java.lang.Double
-
-                - type: io.cloudsoft.amp.networking.NetworkSecurityCustomizer
-                  brooklyn.config:
-                    networks:
-                    - appservers
-                    networks-ingress:
-                    - network: frontend
-                      exposing:
-                      - http.port
-
-          brooklyn.enrichers:
-          - type: org.apache.brooklyn.enricher.stock.Aggregator
-            brooklyn.config:
-              uniqueTag: nodejs-cluster-cpu-average
-              enricher.sourceSensor: $brooklyn:sensor("nodejs.metrics.read")
-              enricher.targetSensor: $brooklyn:sensor("nodejs.metrics.read.average")
-              enricher.aggregating.fromMembers: true
-              transformation: average
-
-          brooklyn.policies:
-          - type: org.apache.brooklyn.policy.ha.ServiceReplacer
-          - type: org.apache.brooklyn.policy.autoscaling.AutoScalerPolicy
-            brooklyn.config:
-              metric: $brooklyn:sensor("nodejs.metrics.read.average")
-              metricUpperBound: 100
-              metricLowerBound: 50
-              minPoolSize: 2
-              maxPoolSize: 5
-              resizeUpStabilizationDelay: 1m
-              resizeDownStabilizationDelay: 2m
+                  networks:
+                  - appservers
+                  networks-ingress:
+                  - network: frontend
+                    exposing:
+                    - http.port
+        brooklyn.enrichers:
+        - type: org.apache.brooklyn.enricher.stock.Aggregator
+          brooklyn.config:
+            uniqueTag: nodejs-cluster-cpu-average
+            enricher.sourceSensor: $brooklyn:sensor("nodejs.metrics.read")
+            enricher.targetSensor: $brooklyn:sensor("nodejs.metrics.read.average")
+            enricher.aggregating.fromMembers: true
+            transformation: average
+        brooklyn.policies:
+        - type: org.apache.brooklyn.policy.ha.ServiceReplacer
+        - type: org.apache.brooklyn.policy.autoscaling.AutoScalerPolicy
+          brooklyn.config:
+            metric: $brooklyn:sensor("nodejs.metrics.read.average")
+            metricUpperBound: 100
+            metricLowerBound: 50
+            minPoolSize: 2
+            maxPoolSize: 5
+            resizeUpStabilizationDelay: 1m
+            resizeDownStabilizationDelay: 2m
