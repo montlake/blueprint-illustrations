@@ -19,13 +19,27 @@ variable "aws_region" {
   default     = "us-west-2"
 }
 
-# Ubuntu Precise 12.04 LTS (x64)
 variable "aws_amis" {
   type = "map"
   default = {
-    eu-west-1 = "ami-b1cf19c6"
-    us-east-1 = "ami-de7ab6b6"
-    us-west-1 = "ami-3f75767a"
-    us-west-2 = "ami-21f78e11"
+    eu-west-1 = "ami-7abd0209"
+    us-east-1 = "ami-6d1c2007"
+    us-west-1 = "ami-af4333cf"
+    us-west-2 = "ami-d2c924b2"
   }
+}
+
+variable "node_repo_url" {
+  description = "The repository to clone when launching the Node cluster"
+  default     = "https://github.com/justinThompson/todo-app.git"
+}
+
+variable "node_app_filename" {
+  description = "The root Node application file",
+  default     = "app.js"
+}
+
+variable "database_creation_script" {
+  description = "Used to initialise the database",
+  default     = "https://raw.githubusercontent.com/justinThompson/todo-app/master/db-creation-script.sql"
 }

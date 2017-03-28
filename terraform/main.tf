@@ -76,6 +76,14 @@ resource "aws_security_group" "default" {
     cidr_blocks = ["10.0.0.0/16"]
   }
 
+  # Access from the world while testing
+  ingress {
+    from_port = 8000
+    to_port = 8000
+    protocol = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
   # outbound internet access
   egress {
     from_port   = 0
@@ -85,15 +93,72 @@ resource "aws_security_group" "default" {
   }
 }
 
+resource "aws_instance" "database" {
+  connection {
+    user        = "centos"
+    private_key = "${file("~/.ssh/id_rsa")}"
+  }
+  tags {
+    Name = "Database"
+  }
+  instance_type          = "t2.small"
+  ami                    = "${lookup(var.aws_amis, var.aws_region)}"
+  key_name               = "${aws_key_pair.auth.id}"
+  vpc_security_group_ids = ["${aws_security_group.default.id}"]
+  subnet_id              = "${aws_subnet.default.id}"
+  provisioner "remote-exec" {
+    inline = [
+      "sudo systemctl stop firewalld",
+      "sudo systemctl disable firewalld",
+      "sudo yum update -y",
+      "sudo yum install -y mariadb-server",
+      "sudo systemctl enable mariadb",
+      "sudo systemctl start mariadb",
+      "curl -o /tmp/datastore_creation_script.sql ${var.database_creation_script}",
+      "sudo mysql < /tmp/datastore_creation_script.sql",
+   ]
+  }
+}
+
+resource "aws_instance" "node_cluster" {
+  connection {
+    user        = "centos"
+    private_key = "${file("~/.ssh/id_rsa")}"
+  }
+  tags {
+    Name = "App server"
+  }
+  count                  = 1
+  instance_type          = "t2.small"
+  ami                    = "${lookup(var.aws_amis, var.aws_region)}"
+  key_name               = "${aws_key_pair.auth.id}"
+  vpc_security_group_ids = ["${aws_security_group.default.id}"]
+  subnet_id              = "${aws_subnet.default.id}"
+  provisioner "remote-exec" {
+    inline = [
+      "sudo systemctl stop firewalld",
+      "sudo systemctl disable firewalld",
+      "sudo yum update -y",
+      "sudo yum install -y epel-release",
+      "sudo yum install -y git",
+      "sudo yum install -y nodejs",
+      "git clone ${var.node_repo_url} app",
+      "cd app",
+      "npm --no-color install",
+      "DB_HOST=${aws_instance.database.private_ip} DB_PORT=3306 DB_USER=brooklyn DB_PASSWORD=br00k11n DB_NAME=todo nohup node ${var.node_app_filename} >>console.log 2>&1 &",
+   ]
+  }
+}
+
 resource "aws_elb" "web" {
   name = "terraform-example-elb"
 
   subnets         = ["${aws_subnet.default.id}"]
   security_groups = ["${aws_security_group.elb.id}"]
-  instances       = ["${aws_instance.web.id}"]
+  instances       = ["${aws_instance.node_cluster.id}"]
 
   listener {
-    instance_port     = 80
+    instance_port     = 8000
     instance_protocol = "http"
     lb_port           = 80
     lb_protocol       = "http"
@@ -103,7 +168,7 @@ resource "aws_elb" "web" {
     healthy_threshold   = 2
     unhealthy_threshold = 2
     timeout             = 3
-    target              = "HTTP:80/"
+    target              = "HTTP:8000/"
     interval            = 15
   }
 }
@@ -113,41 +178,3 @@ resource "aws_key_pair" "auth" {
   public_key = "${file(var.public_key_path)}"
 }
 
-resource "aws_instance" "web" {
-  # The connection block tells our provisioner how to
-  # communicate with the resource (instance)
-  connection {
-    # The connection will use the local SSH agent for authentication.
-    # The default username for our AMI
-    user = "ubuntu"
-    private_key = "${file("~/.ssh/id_rsa")}"
-  }
-
-  instance_type = "m1.small"
-
-  # Lookup the correct AMI based on the region
-  # we specified
-  ami = "${lookup(var.aws_amis, var.aws_region)}"
-
-  # The name of our SSH keypair we created above.
-  key_name = "${aws_key_pair.auth.id}"
-
-  # Our Security group to allow HTTP and SSH access
-  vpc_security_group_ids = ["${aws_security_group.default.id}"]
-
-  # We're going to launch into the same subnet as our ELB. In a production
-  # environment it's more common to have a separate private subnet for
-  # backend instances.
-  subnet_id = "${aws_subnet.default.id}"
-
-  # We run a remote provisioner on the instance after creating it.
-  # In this case, we just install nginx and start it. By default,
-  # this should be on port 80
-  provisioner "remote-exec" {
-    inline = [
-      "sudo apt-get -y update",
-      "sudo apt-get -y install nginx",
-      "sudo service nginx start",
-    ]
-  }
-}

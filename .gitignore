@@ -32,4 +32,4 @@ brooklyn*.log.*
 
 ignored
 
-terraform/terraform.tfstate*
+terraform/*terraform.tfstate*
