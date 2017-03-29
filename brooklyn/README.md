@@ -18,13 +18,13 @@ Once the server is running add [locations](https://brooklyn.apache.org/v/latest/
 for the clouds you want to target.
 
 Use the `br` CLI tool to add `base-software-process.bom`, `nodejs.bom`, `mariadb.bom`
-and `app.bom` to the catalog:
+and `brooklyn-app.bom` to the catalog:
 
 ```
 br catalog add ./base-software-process.bom
 br catalog add ./mariadb.bom
 br catalog add ./nodejs.bom
-br catalog add ./app.bom
+br catalog add ./brooklyn-app.bom
 ```
 
 Then use the Brooklyn UI to deploy `example-brooklyn-app` to your chosen location.
