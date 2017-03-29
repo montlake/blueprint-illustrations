@@ -11,12 +11,17 @@ DESCRIPTION
 
 variable "key_name" {
   description = "Desired name of AWS key pair"
-  default = "tfkeypair"
+  default     = "tfkeypair"
 }
 
 variable "aws_region" {
   description = "AWS region to launch servers."
   default     = "us-west-2"
+}
+
+variable "availability_zones" {
+  description = "List of availability zones within aws_region"
+  default     = "us-west-2a,us-west-2b,us-west-2c"
 }
 
 variable "aws_amis" {

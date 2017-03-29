@@ -6,40 +6,29 @@ provider "aws" {
   region = "${var.aws_region}"
 }
 
-# Create a VPC to launch our instances into
-resource "aws_vpc" "default" {
-  cidr_block = "10.0.0.0/16"
+resource "aws_key_pair" "auth" {
+  key_name   = "${var.key_name}"
+  public_key = "${file(var.public_key_path)}"
 }
 
-# Create an internet gateway to give our subnet access to the outside world
-resource "aws_internet_gateway" "default" {
-  vpc_id = "${aws_vpc.default.id}"
-}
-
-# Grant the VPC internet access on its main route table
-resource "aws_route" "internet_access" {
-  route_table_id         = "${aws_vpc.default.main_route_table_id}"
-  destination_cidr_block = "0.0.0.0/0"
-  gateway_id             = "${aws_internet_gateway.default.id}"
-}
-
-# Create a subnet to launch our instances into
-resource "aws_subnet" "default" {
-  vpc_id                  = "${aws_vpc.default.id}"
-  cidr_block              = "10.0.1.0/24"
-  map_public_ip_on_launch = true
-}
-
-# A security group for the ELB so it is accessible via the web
-resource "aws_security_group" "elb" {
-  name        = "terraform_example_elb"
+# Our default security group to access
+# the instances over SSH and HTTP
+resource "aws_security_group" "web" {
+  name        = "terraform_example"
   description = "Used in the terraform"
-  vpc_id      = "${aws_vpc.default.id}"
 
-  # HTTP access from anywhere
+  # SSH access from anywhere
   ingress {
-    from_port   = 80
-    to_port     = 80
+    from_port   = 22
+    to_port     = 22
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  # Test
+  ingress {
+    from_port   = 8000
+    to_port     = 8000
     protocol    = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
   }
@@ -53,12 +42,8 @@ resource "aws_security_group" "elb" {
   }
 }
 
-# Our default security group to access
-# the instances over SSH and HTTP
-resource "aws_security_group" "default" {
-  name        = "terraform_example"
-  description = "Used in the terraform"
-  vpc_id      = "${aws_vpc.default.id}"
+resource "aws_security_group" "database" {
+  name        = "terraform_example_database"
 
   # SSH access from anywhere
   ingress {
@@ -68,20 +53,12 @@ resource "aws_security_group" "default" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 
-  # All communication between members of the VPC
+  # Port 3306 to members of web
   ingress {
-    from_port   = 0
-    to_port     = 65535
+    from_port   = 3306
+    to_port     = 3306
     protocol    = "tcp"
-    cidr_blocks = ["10.0.0.0/16"]
-  }
-
-  # Access from the world while testing
-  ingress {
-    from_port = 8000
-    to_port = 8000
-    protocol = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
+    security_groups = ["${aws_security_group.web.id}"]
   }
 
   # outbound internet access
@@ -104,8 +81,8 @@ resource "aws_instance" "database" {
   instance_type          = "t2.small"
   ami                    = "${lookup(var.aws_amis, var.aws_region)}"
   key_name               = "${aws_key_pair.auth.id}"
-  vpc_security_group_ids = ["${aws_security_group.default.id}"]
-  subnet_id              = "${aws_subnet.default.id}"
+  vpc_security_group_ids = ["${aws_security_group.database.id}"]
+
   provisioner "remote-exec" {
     inline = [
       "sudo systemctl stop firewalld",
@@ -120,50 +97,100 @@ resource "aws_instance" "database" {
   }
 }
 
-resource "aws_instance" "node_cluster" {
+data "template_file" "launch_node" {
+  template = "${file("${path.module}/node-userdata.sh")}"
+  vars {
+    databaseIp = "${aws_instance.database.private_ip}"
+    repoUrl    = "${var.node_repo_url}"
+    repoScript = "${var.node_app_filename}"
+  }
+}
+
+resource "aws_launch_configuration" "web-lc" {
+  name          = "terraform-example-lc"
+  image_id      = "${lookup(var.aws_amis, var.aws_region)}"
+  instance_type = "t2.small"
   connection {
     user        = "centos"
     private_key = "${file("~/.ssh/id_rsa")}"
   }
-  tags {
-    Name = "App server"
-  }
-  count                  = 1
-  instance_type          = "t2.small"
-  ami                    = "${lookup(var.aws_amis, var.aws_region)}"
-  key_name               = "${aws_key_pair.auth.id}"
-  vpc_security_group_ids = ["${aws_security_group.default.id}"]
-  subnet_id              = "${aws_subnet.default.id}"
 
-  provisioner "remote-exec" {
-    inline = [
-      "sudo systemctl stop firewalld",
-      "sudo systemctl disable firewalld",
-      "sudo yum update -y",
-      "sudo yum install -y epel-release",
-      "sudo yum install -y git",
-      "sudo yum install -y nodejs",
-      "sudo npm install -g pm2",
-      "git clone ${var.node_repo_url} app",
-      "cd app",
-      "npm --no-color install",
-      "export DB_HOST=${aws_instance.database.private_ip}",
-      "export DB_PORT=3306",
-      "export DB_USER=brooklyn",
-      "export DB_PASSWORD=br00k11n",
-      "export DB_NAME=todo",
-      "DB_HOST=${aws_instance.database.private_ip} DB_PORT=3306 DB_USER=brooklyn DB_PASSWORD=br00k11n DB_NAME=todo pm2 start node app/app.js",
-      "sleep 1"
-    ]
+  # Security group
+  security_groups = ["${aws_security_group.web.id}"]
+  user_data       = "${data.template_file.launch_node.rendered}"
+  key_name        = "${var.key_name}"
+
+  lifecycle {
+    create_before_destroy = true
   }
 }
 
-resource "aws_elb" "web" {
-  name = "terraform-example-elb"
+resource "aws_autoscaling_group" "web-asg" {
+  availability_zones   = ["${split(",", var.availability_zones)}"]
+  name                 = "terraform-example-asg"
+  max_size             = "5"
+  min_size             = "1"
+  force_delete         = true
+  launch_configuration = "${aws_launch_configuration.web-lc.name}"
+  load_balancers       = ["${aws_elb.web.name}"]
+  tag {
+    key                 = "Name"
+    value               = "web-asg"
+    propagate_at_launch = "true"
+  }
+}
 
-  subnets         = ["${aws_subnet.default.id}"]
-  security_groups = ["${aws_security_group.elb.id}"]
-  instances       = ["${aws_instance.node_cluster.id}"]
+resource "aws_autoscaling_policy" "web_scale_up" {
+  name                     = "CPU scale up"
+  scaling_adjustment       = 2
+  adjustment_type          = "ChangeInCapacity"
+  cooldown                 = 300
+  autoscaling_group_name   = "${aws_autoscaling_group.web-asg.name}"
+}
+
+resource "aws_cloudwatch_metric_alarm" "web_scale_up_metric" {
+    alarm_name          = "Scale up from CPU"
+    comparison_operator = "GreaterThanThreshold"
+    evaluation_periods  = "1"
+    metric_name         = "CPUUtilization"
+    namespace           = "AWS/EC2"
+    period              = "300"
+    statistic           = "Average"
+    threshold           = "65"
+    dimensions {
+        AutoScalingGroupName = "${aws_autoscaling_group.web-asg.name}"
+    }
+    alarm_description   = "Monitors auto-scaling group member CPU utilization"
+    alarm_actions       = ["${aws_autoscaling_policy.web_scale_up.arn}"]
+}
+
+resource "aws_autoscaling_policy" "web_scale_down" {
+  name                   = "CPU scale down"
+  scaling_adjustment     = -1
+  adjustment_type        = "ChangeInCapacity"
+  cooldown               = 600
+  autoscaling_group_name = "${aws_autoscaling_group.web-asg.name}"
+}
+
+resource "aws_cloudwatch_metric_alarm" "web_scale_down_metric" {
+    alarm_name          = "Scale down from CPU"
+    comparison_operator = "LessThanThreshold"
+    evaluation_periods  = "1"
+    metric_name         = "CPUUtilization"
+    namespace           = "AWS/EC2"
+    period              = "600"
+    statistic           = "Average"
+    threshold           = "30"
+    dimensions {
+        AutoScalingGroupName = "${aws_autoscaling_group.web-asg.name}"
+    }
+    alarm_description   = "Monitors auto-scaling group member CPU utilization"
+    alarm_actions       = ["${aws_autoscaling_policy.web_scale_down.arn}"]
+}
+
+resource "aws_elb" "web" {
+  name = "app-elb"
+  availability_zones   = ["${split(",", var.availability_zones)}"]
 
   listener {
     instance_port     = 8000
@@ -180,9 +207,3 @@ resource "aws_elb" "web" {
     interval            = 15
   }
 }
-
-resource "aws_key_pair" "auth" {
-  key_name   = "${var.key_name}"
-  public_key = "${file(var.public_key_path)}"
-}
-
