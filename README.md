@@ -68,7 +68,7 @@ passes config to those elements to set up the “TODO” application.
 The blueprint deployed and managed by Cloudsoft AMP reuses the entities defined
 in the Apache Brooklyn blueprint.
 
-The AMP blueprint deplys in the same way as the Apache Brooklyn Blueprint, with
+The AMP blueprint deploys in the same way as the Apache Brooklyn Blueprint, with
 the addition that the blueprint also configures resources for “Application
 Network Security”: Network segregation and accessibility is determined through
 assigning named network entities within the blueprint, and the security
