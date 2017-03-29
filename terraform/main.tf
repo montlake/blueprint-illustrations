@@ -143,6 +143,7 @@ resource "aws_instance" "node_cluster" {
       "sudo yum install -y epel-release",
       "sudo yum install -y git",
       "sudo yum install -y nodejs",
+      "sudo npm install -g pm2",
       "git clone ${var.node_repo_url} app",
       "cd app",
       "npm --no-color install",
@@ -151,11 +152,8 @@ resource "aws_instance" "node_cluster" {
       "export DB_USER=brooklyn",
       "export DB_PASSWORD=br00k11n",
       "export DB_NAME=todo",
-      # TODO: Convince Terraform/something that the process shouldn't die when the provisioner exits.
-      "nohup node ${var.node_app_filename} >console.log 2>&1 & disown",
-      # Attempt to solve the exit per the only recommendation I could find on the matter.
-      # Doesn't seem to help.
-      "sleep 3"
+      "DB_HOST=${aws_instance.database.private_ip} DB_PORT=3306 DB_USER=brooklyn DB_PASSWORD=br00k11n DB_NAME=todo pm2 start node app/app.js",
+      "sleep 1"
     ]
   }
 }
