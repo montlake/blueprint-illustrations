@@ -1,0 +1,81 @@
+brooklyn.catalog:
+  version: "0.1"
+
+  items:
+
+  # Incorporates the components above and includes network security rules on each
+  # node and scaling policies on the cluster.
+  - id: example-app-with-network-security
+    itemType: template
+    item:
+      name: Example App
+      location: # add the location id here.
+      services:
+      - type: app-load-balancer
+        brooklyn.initializers:
+        - type: io.cloudsoft.amp.networking.NetworkSecurityCustomizer
+          brooklyn.config:
+            # enforcement may be "mandatory", "optional" or "disabled". The default is mandatory.
+            enforcement: mandatory
+            networks:
+            - frontend
+            - public
+            networks-ingress:
+            - network: public
+              exposing:
+              - proxy.http.port
+
+      - type: app-database
+        brooklyn.initializers:
+        # The database exposes its port to the app servers
+        - type: io.cloudsoft.amp.networking.NetworkSecurityCustomizer
+          brooklyn.config:
+            enforcement: mandatory
+            networks:
+            - backend
+            networks-ingress:
+            - network: appservers
+              exposing:
+              - port
+
+      - type: org.apache.brooklyn.entity.group.DynamicCluster
+        name: My Cluster
+        id: cluster
+        brooklyn.config:
+          initialSize: 2
+          memberSpec:
+            $brooklyn:entitySpec:
+              type: app-web-member
+              brooklyn.initializers:
+              # Members of the cluster expose their http.port to the frontend.
+              - type: io.cloudsoft.amp.networking.NetworkSecurityCustomizer
+                brooklyn.config:
+                  enforcement: mandatory
+                  networks:
+                  - appservers
+                  networks-ingress:
+                  - network: frontend
+                    # Note that the metrics endpoint isn't exposed, meaning that the sensitive data
+                    # is only visible to the management network.
+                    exposing:
+                    - http.port
+
+        brooklyn.enrichers:
+        - type: org.apache.brooklyn.enricher.stock.Aggregator
+          brooklyn.config:
+            uniqueTag: nodejs-cluster-cpu-average
+            enricher.sourceSensor: $brooklyn:sensor("nodejs.metrics.read")
+            enricher.targetSensor: $brooklyn:sensor("nodejs.metrics.read.average")
+            enricher.aggregating.fromMembers: true
+            transformation: average
+        brooklyn.policies:
+        - type: org.apache.brooklyn.policy.ha.ServiceReplacer
+        - type: org.apache.brooklyn.policy.autoscaling.AutoScalerPolicy
+          brooklyn.config:
+            metric: $brooklyn:sensor("nodejs.metrics.read.average")
+            metricUpperBound: 100
+            metricLowerBound: 50
+            minPoolSize: 2
+            maxPoolSize: 5
+            resizeUpStabilizationDelay: 1m
+            resizeDownStabilizationDelay: 2m

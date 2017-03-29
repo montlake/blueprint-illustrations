@@ -1,11 +1,7 @@
 brooklyn.catalog:
   version: "0.1"
 
-  brooklyn.libraries:
-  - http://artifactory.cloudsoftcorp.com/artifactory/libs-release-local/io/cloudsoft/amp/amp-networking/1.1.0/amp-networking-1.1.0.jar
-
   items:
-
   - id: app-load-balancer
     itemType: entity
     item:
@@ -46,11 +42,19 @@ brooklyn.catalog:
     item:
       type: 'nodejs-node:0.1'
       name: NodeJS
+      brooklyn.parameters:
+        - name: metrics.port
+          label: "Metrics Port"
+          default: 8091
+          type: port
+          constraints:
+            - required
       brooklyn.config:
         nodejs.gitRepo.url: https://github.com/justinThompson/todo-app.git
         nodejs.app.fileName: app.js
         nodejs.app.name: Todo App
         shell.env:
+          METRICS_PORT: $brooklyn:attributeWhenReady("metrics.port")
           DB_HOST: $brooklyn:component("mariadb").attributeWhenReady("host.subnet.address")
           DB_PORT: $brooklyn:component("mariadb").attributeWhenReady("port")
           DB_USER: $brooklyn:component("mariadb").attributeWhenReady("db.user")
@@ -68,11 +72,12 @@ brooklyn.catalog:
           enricher.targetSensor: metrics.uri
           enricher.triggerSensors:
           - host.address
+          - metrics.port
           enricher.targetValue:
             $brooklyn:formatString:
-            # todo: inject
-            - "http://%s:8091/metrics"
+            - "http://%s:%s/metrics"
             - $brooklyn:attributeWhenReady("host.address")
+            - $brooklyn:attributeWhenReady("metrics.port")
       - type: org.apache.brooklyn.policy.ha.ServiceFailureDetector
         brooklyn.config:
           entityFailed.stabilizationDelay: 30s
@@ -109,41 +114,15 @@ brooklyn.catalog:
           period: 5s
           targetType: java.lang.Double
 
-  # Incorporates the components above and includes network security rules on each
-  # node and scaling policies on the cluster.
-  - id: example-app
+  # Incorporates the components above and includes scaling policies on the cluster.
+  - id: example-brooklyn-app
     itemType: template
     item:
       name: Example App
-      location: beyond
+      location: # add the location id here.
       services:
       - type: app-load-balancer
-        brooklyn.initializers:
-        - type: io.cloudsoft.amp.networking.NetworkSecurityCustomizer
-          brooklyn.config:
-            enforcement: optional
-            networks:
-            - frontend
-            - public
-            networks-ingress:
-            # Note that the metrics endpoint isn't exposed, meaning that the sensitive data
-            # is only visible to the management network.
-            - network: public
-              exposing:
-              - proxy.http.port
-
       - type: app-database
-        brooklyn.initializers:
-        - type: io.cloudsoft.amp.networking.NetworkSecurityCustomizer
-          brooklyn.config:
-            enforcement: optional
-            networks:
-            - backend
-            networks-ingress:
-            - network: appservers
-              exposing:
-              - port
-
       - type: org.apache.brooklyn.entity.group.DynamicCluster
         name: My Cluster
         id: cluster
@@ -152,16 +131,6 @@ brooklyn.catalog:
           memberSpec:
             $brooklyn:entitySpec:
               type: app-web-member
-              brooklyn.initializers:
-              - type: io.cloudsoft.amp.networking.NetworkSecurityCustomizer
-                brooklyn.config:
-                  enforcement: optional
-                  networks:
-                  - appservers
-                  networks-ingress:
-                  - network: frontend
-                    exposing:
-                    - http.port
         brooklyn.enrichers:
         - type: org.apache.brooklyn.enricher.stock.Aggregator
           brooklyn.config:

@@ -10,7 +10,7 @@ brooklyn.catalog:
     license_code: Apache-2.0
     overview: README.md
   item:
-    type: centos-software-process
+    type: base-software-process:0.1
     name: nodejs Node
     brooklyn.parameters:
       - name: nodejs.gitRepo.url

@@ -10,13 +10,19 @@ brooklyn.catalog:
     license_code: Apache-2.0
     overview: README.md
   item:
-    type: centos-software-process
+    type: base-software-process:0.1
     name: MariaDB Node
     brooklyn.parameters:
       - name: mariadb.datastore.creation.script.url
         label: "Datastore Creation Script URL"
         description: |
           URL of creation script to use to initialize the datastore
+      - name: port
+        label: "Database Port"
+        default: 3306
+        type: port
+        constraints:
+          - required
 
     brooklyn.config:
       shell.env:
@@ -47,10 +53,3 @@ brooklyn.catalog:
 
       stop.command: |
         sudo systemctl stop mariadb 
-
-    brooklyn.initializers:
-    - type: org.apache.brooklyn.core.sensor.StaticSensor
-      brooklyn.config:
-        name: port
-        static.value: 3306
-        targetType: java.lang.Integer
