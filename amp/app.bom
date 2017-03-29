@@ -121,6 +121,7 @@ brooklyn.catalog:
         brooklyn.initializers:
         - type: io.cloudsoft.amp.networking.NetworkSecurityCustomizer
           brooklyn.config:
+            enforcement: optional
             networks:
             - frontend
             - public
@@ -135,6 +136,7 @@ brooklyn.catalog:
         brooklyn.initializers:
         - type: io.cloudsoft.amp.networking.NetworkSecurityCustomizer
           brooklyn.config:
+            enforcement: optional
             networks:
             - backend
             networks-ingress:
@@ -153,6 +155,7 @@ brooklyn.catalog:
               brooklyn.initializers:
               - type: io.cloudsoft.amp.networking.NetworkSecurityCustomizer
                 brooklyn.config:
+                  enforcement: optional
                   networks:
                   - appservers
                   networks-ingress:
