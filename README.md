@@ -46,7 +46,7 @@ ELB component uses a security group that allows ingress on port 80 from
 
 ## Apache Brooklyn
 
-The Brooklyn blueprint defines the entitines or components that are used in the
+The Brooklyn blueprint defines the entities or components that are used in the
 Brooklyn and AMP deployments.
 
 - A single node MySQL/MariaDB database, configured with a database/table
@@ -73,7 +73,7 @@ the addition that the blueprint also configures resources for “Application
 Network Security”: Network segregation and accessibility is determined through
 assigning named network entities within the blueprint, and the security
 controls are applied using the mechanisms available on the target cloud or
-platform. Application Network Security is currently supported on AWS and
+platform. [Application Network Security](https://cloudsoft.io/blog/amp-network-security) is currently supported on AWS and
 OpenStack.
 
 In this case, only the load balancer will be exposed on the public internet,
@@ -118,11 +118,11 @@ that mentioned above for Apache Brooklyn.
 
 # Conclusion
 
-This repository shows a simple AMP-managed application side-by-side with the
+This repository shows a simple Brooklyn/AMP-managed application side-by-side with the
 analagous Terraform-deployed application. The following table briefly
 summarizes other Brooklyn/AMP capabilities as they relate to Terraform. 
 
-| Capability                                                                                   | Cloudsoft AMP/Apache Brooklyn                                                                                                                                             | Terraform                                                                                                                                                                                           |
+| Capability                                                                                   | Apache Brooklyn/Cloudsoft AMP                                                                                                                                             | Terraform                                                                                                                                                                                           |
 |----------------------------------------------------------------------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | Provision Secure 3-tier Autoscaling App in AWS                                               | YES                                                                                                                                                                       | YES                                                                                                                                                                                                 |
 | Deploy elswhere: Softlayer, OpenStack, Azure, Kubernetes                                     | YES - The same blueprint works in all these clouds                                                                                                                        | PARTLY - New blueprints need to be written for each environment. Many items (ELB, auto-scaling) are specific to particular clouds.                                                                  |
