@@ -13,9 +13,9 @@ and traffic is automatically load-balanced between instances.
 
 Please refer to the documentation within each implementation for deployment
 directions:
-- [Three Tier Node.JS Terraform](./terraform/README.md)
-- [Three Tier Node.JS Apache Brooklyn](./brooklyn/README.md)
-- [Three Tier Node.JS Cloudsoft AMP](./amp/README.md)
+- [Three Tier Node.JS Terraform](./three-tier-nodejs-terraform/README.md)
+- [Three Tier Node.JS Apache Brooklyn](./three-tier-nodejs-brooklyn/README.md)
+- [Three Tier Node.JS Cloudsoft AMP](./three-tier-nodejs-amp/README.md)
 
 # Deployment
 
@@ -68,13 +68,14 @@ passes config to those elements to set up the “TODO” application.
 The blueprint deployed and managed by Cloudsoft AMP reuses the entities defined
 in the Apache Brooklyn blueprint.
 
-The AMP blueprint deploys in the same way as the Apache Brooklyn Blueprint, with
-the addition that the blueprint also configures resources for “Application
+The AMP blueprint deploys in the same way as the Apache Brooklyn Blueprint,
+with the addition that the blueprint also configures resources for “Application
 Network Security”: Network segregation and accessibility is determined through
 assigning named network entities within the blueprint, and the security
 controls are applied using the mechanisms available on the target cloud or
-platform. [Application Network Security](https://cloudsoft.io/blog/amp-network-security) is currently supported on AWS and
-OpenStack.
+platform. [Application Network
+Security](https://cloudsoft.io/blog/amp-network-security) is currently
+supported on AWS and OpenStack.
 
 In this case, only the load balancer will be exposed on the public internet,
 and other resources will be isolated.
@@ -102,12 +103,12 @@ or cluster of entities.
 2. There is a failure detector on the JodeJS instance. This emits an “Entity
    Failed” event whenever a failure is detected, and similarly an “Entity
    Recovered” event when recovered.
-3. On the Node.JS cluster there is a service replacer, which will replace a failed
-   node with a newly provisioned one.
+3. On the Node.JS cluster there is a service replacer, which will replace a
+   failed node with a newly provisioned one.
 4. Finally, also on the Node.JS cluster there is an auto-scaler policy.
    Auto-scaling, and all policies, in AMP are extremely flexible, and may be
-   triggered on any observable condition, individually or taken in aggregate. In
-   this case we are scaling the Node.JS cluster on a metric provided by the
+   triggered on any observable condition, individually or taken in aggregate.
+   In this case we are scaling the Node.JS cluster on a metric provided by the
    Node.JS application itself [metric, and link to line]. In other cases we may
    choose to scale on CPU usage, requests per second, etc.
 
@@ -118,8 +119,8 @@ that mentioned above for Apache Brooklyn.
 
 # Conclusion
 
-This repository shows a simple Brooklyn/AMP-managed application side-by-side with the
-analagous Terraform-deployed application. The following table briefly
+This repository shows a simple Brooklyn/AMP-managed application side-by-side
+with the analagous Terraform-deployed application. The following table briefly
 summarizes other Brooklyn/AMP capabilities as they relate to Terraform. 
 
 | Capability                                                                                   | Apache Brooklyn/Cloudsoft AMP                                                                                                                                             | Terraform                                                                                                                                                                                           |

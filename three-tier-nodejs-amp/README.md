@@ -2,7 +2,7 @@
 
 ## Overview
 
-Extends the Apache Brooklyn blueprints in [brooklyn-app.bom](../brooklyn/brooklyn-app.bom)
+Extends the Apache Brooklyn blueprints in [brooklyn-app.bom](../three-tier-nodejs-brooklyn/brooklyn-app.bom)
 to use [Cloudsoft AMP's](https://cloudsoft.io/getamp/) network security features.
  
 In supported clouds (AWS EC2 and OpenStack) [network security rules](https://cloudsoft.io/blog/amp-network-security)
