@@ -9,6 +9,12 @@ brooklyn.catalog:
     item:
       name: Example App
       location: # add the location id here.
+      brooklyn.enrichers:
+      - type: org.apache.brooklyn.enricher.stock.Propagator
+        brooklyn.config:
+          producer: $brooklyn:entity("nginx")
+          sensorMapping:
+            $brooklyn:sensor("main.uri.mapped.public"): $brooklyn:sensor("org.apache.brooklyn.core.entity.Attributes", "main.uri")
       services:
       - type: app-load-balancer
         brooklyn.initializers:
