@@ -2,9 +2,8 @@ brooklyn.catalog:
   version: "0.1"
 
   items:
-
-  # Incorporates the components above and includes network security rules on each
-  # node and scaling policies on the cluster.
+  # Incorporates the components in brooklyn-app.bom and includes network security rules
+  # on each node and scaling policies on the cluster.
   - id: example-app-with-network-security
     itemType: template
     item:

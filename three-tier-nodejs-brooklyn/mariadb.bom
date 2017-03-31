@@ -4,11 +4,14 @@ brooklyn.catalog:
   name: MariaDB Node
   iconUrl: "https://mariadb.com/themes/custom/mariadb/logo.svg"
   itemType: entity
+
   description: |
     MariaDB
+
   publish:
     license_code: Apache-2.0
     overview: README.md
+
   item:
     type: base-software-process:0.1
     name: MariaDB Node

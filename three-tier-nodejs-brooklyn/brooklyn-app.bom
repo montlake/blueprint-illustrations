@@ -1,6 +1,9 @@
 brooklyn.catalog:
   version: "0.1"
 
+  description: |
+    App-specific specializations of generic entities.
+
   items:
   - id: app-load-balancer
     itemType: entity

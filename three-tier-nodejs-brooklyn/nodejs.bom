@@ -4,11 +4,14 @@ brooklyn.catalog:
   name: nodejs Node
   iconUrl: "https://nodejs.org/static/images/logo.svg"
   itemType: entity
+
   description: |
     NodeJS
+
   publish:
     license_code: Apache-2.0
     overview: README.md
+
   item:
     type: base-software-process:0.1
     name: nodejs Node
