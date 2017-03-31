@@ -124,8 +124,8 @@ brooklyn.catalog:
       - type: org.apache.brooklyn.enricher.stock.Propagator
         brooklyn.config:
           producer: $brooklyn:entity("nginx")
-          propagating:
-          - main.uri
+          sensorMapping:
+            $brooklyn:sensor("main.uri.mapped.public"): $brooklyn:sensor("org.apache.brooklyn.core.entity.Attributes", "main.uri")
       services:
       - type: app-load-balancer
       - type: app-database
