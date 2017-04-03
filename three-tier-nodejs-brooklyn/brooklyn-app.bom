@@ -9,7 +9,6 @@ brooklyn.catalog:
     itemType: entity
     item:
       type: org.apache.brooklyn.entity.proxy.nginx.NginxController
-      id: nginx
       name: My Load Balancer (nginx)
       brooklyn.config:
         # Expects to be run in an app with an entity whose id is cluster.
@@ -20,49 +19,34 @@ brooklyn.catalog:
     itemType: entity
     item:
       type: 'mariadb-node:0.1'
-      id: mariadb
       name: MariaDB
       brooklyn.config:
         mariadb.datastore.creation.script.url: https://raw.githubusercontent.com/justinThompson/todo-app/master/db-creation-script.sql
-      # Values set in db-creation-script.sql. Could be injected.
-      brooklyn.initializers:
-      - type: org.apache.brooklyn.core.sensor.StaticSensor
-        brooklyn.config:
-          name: db.user
-          static.value: brooklyn
-      - type: org.apache.brooklyn.core.sensor.StaticSensor
-        brooklyn.config:
-          name: db.password
-          static.value: br00k11n
-      - type: org.apache.brooklyn.core.sensor.StaticSensor
-        brooklyn.config:
-          name: db.name
-          # The database is called 'todo'
-          static.value: todo
+        # These values are set in db-creation-script.sql. With a little work they could also
+        # be injected into the creation script.
+        db.user: brooklyn
+        db.password: br00k11n # would normally come from an external config provider.
+        db.name: todo # the database is literally 'todo'
 
+  # A single instance of the Node.js application. Expects to obtain database connection
+  # values from another entity with id 'db'.
   - id: app-web-member
     itemType: entity
     item:
       type: 'nodejs-node:0.1'
       name: NodeJS
-      brooklyn.parameters:
-        - name: metrics.port
-          label: "Metrics Port"
-          default: 8091
-          type: port
-          constraints:
-            - required
       brooklyn.config:
+        metrics.port: 8091
         nodejs.gitRepo.url: https://github.com/justinThompson/todo-app.git
         nodejs.app.fileName: app.js
         nodejs.app.name: Todo App
         shell.env:
-          METRICS_PORT: $brooklyn:attributeWhenReady("metrics.port")
-          DB_HOST: $brooklyn:component("mariadb").attributeWhenReady("host.subnet.address")
-          DB_PORT: $brooklyn:component("mariadb").attributeWhenReady("port")
-          DB_USER: $brooklyn:component("mariadb").attributeWhenReady("db.user")
-          DB_PASSWORD: $brooklyn:component("mariadb").attributeWhenReady("db.password")
-          DB_NAME: $brooklyn:component("mariadb").attributeWhenReady("db.name")
+          METRICS_PORT: $brooklyn:config("metrics.port")
+          DB_HOST: $brooklyn:entity("db").attributeWhenReady("host.subnet.address")
+          DB_PORT: $brooklyn:entity("db").attributeWhenReady("port")
+          DB_USER: $brooklyn:entity("db").config("db.user")
+          DB_PASSWORD: $brooklyn:entity("db").config("db.password")
+          DB_NAME: $brooklyn:entity("db").config("db.name")
 
       brooklyn.policies:
       - type: org.apache.brooklyn.policy.ha.ServiceRestarter
@@ -70,6 +54,7 @@ brooklyn.catalog:
           failOnRecurringFailuresInThisDuration: 5m
 
       brooklyn.enrichers:
+      # Publishes the address of the metrics endpoint as a sensor named metrics.uri.
       - type: org.apache.brooklyn.enricher.stock.Transformer
         brooklyn.config:
           enricher.targetSensor: metrics.uri
@@ -80,7 +65,7 @@ brooklyn.catalog:
             $brooklyn:formatString:
             - "http://%s:%s/metrics"
             - $brooklyn:attributeWhenReady("host.address")
-            - $brooklyn:attributeWhenReady("metrics.port")
+            - $brooklyn:config("metrics.port")
       - type: org.apache.brooklyn.policy.ha.ServiceFailureDetector
         brooklyn.config:
           entityFailed.stabilizationDelay: 30s
@@ -123,39 +108,54 @@ brooklyn.catalog:
     item:
       name: Example App
       location: # add the location id here.
-      brooklyn.enrichers:
-      - type: org.apache.brooklyn.enricher.stock.Propagator
-        brooklyn.config:
-          producer: $brooklyn:entity("nginx")
-          sensorMapping:
-            $brooklyn:sensor("main.uri.mapped.public"): $brooklyn:sensor("org.apache.brooklyn.core.entity.Attributes", "main.uri")
       services:
-      - type: app-load-balancer
-      - type: app-database
-      - type: org.apache.brooklyn.entity.group.DynamicCluster
-        name: My Cluster
-        id: cluster
-        brooklyn.config:
-          initialSize: 2
-          memberSpec:
-            $brooklyn:entitySpec:
-              type: app-web-member
+      - type: org.apache.brooklyn.entity.stock.BasicApplication
+
         brooklyn.enrichers:
-        - type: org.apache.brooklyn.enricher.stock.Aggregator
+        # Propagate the URI published by the load balancer to the root application.
+        - type: org.apache.brooklyn.enricher.stock.Propagator
           brooklyn.config:
-            uniqueTag: nodejs-cluster-cpu-average
-            enricher.sourceSensor: $brooklyn:sensor("nodejs.metrics.read")
-            enricher.targetSensor: $brooklyn:sensor("nodejs.metrics.read.average")
-            enricher.aggregating.fromMembers: true
-            transformation: average
-        brooklyn.policies:
-        - type: org.apache.brooklyn.policy.ha.ServiceReplacer
-        - type: org.apache.brooklyn.policy.autoscaling.AutoScalerPolicy
+            producer: $brooklyn:entity("load-balancer")
+            sensorMapping:
+              main.uri.mapped.public: $brooklyn:sensor("org.apache.brooklyn.core.entity.Attributes", "main.uri")
+
+        brooklyn.children:
+        - type: app-load-balancer
+          id: load-balancer
+
+        - type: app-database
+          id: db
+
+        # An auto-scaling cluster of Node.js applications.
+        - type: org.apache.brooklyn.entity.group.DynamicCluster
+          name: My Cluster
+          id:   cluster
           brooklyn.config:
-            metric: $brooklyn:sensor("nodejs.metrics.read.average")
-            metricUpperBound: 100
-            metricLowerBound: 50
-            minPoolSize: 2
-            maxPoolSize: 5
-            resizeUpStabilizationDelay: 1m
-            resizeDownStabilizationDelay: 2m
+            initialSize: 2
+            memberSpec:
+              $brooklyn:entitySpec:
+                type: app-web-member
+                brooklyn.config:
+                  database: $brooklyn:entity("mariadb")
+
+          brooklyn.enrichers:
+          # Transform the average on each member into an average across the cluster.
+          - type: org.apache.brooklyn.enricher.stock.Aggregator
+            brooklyn.config:
+              uniqueTag: nodejs-cluster-cpu-average
+              enricher.sourceSensor: $brooklyn:sensor("nodejs.metrics.read")
+              enricher.targetSensor: $brooklyn:sensor("nodejs.metrics.read.average")
+              enricher.aggregating.fromMembers: true
+              transformation: average
+
+          brooklyn.policies:
+          - type: org.apache.brooklyn.policy.ha.ServiceReplacer
+          - type: org.apache.brooklyn.policy.autoscaling.AutoScalerPolicy
+            brooklyn.config:
+              metric: $brooklyn:sensor("nodejs.metrics.read.average")
+              metricLowerBound: 50
+              metricUpperBound: 100
+              minPoolSize: 2
+              maxPoolSize: 5
+              resizeUpStabilizationDelay: 1m
+              resizeDownStabilizationDelay: 2m

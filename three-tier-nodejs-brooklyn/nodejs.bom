@@ -75,6 +75,7 @@ brooklyn.catalog:
         pkill node
 
     brooklyn.enrichers:
+    # Publishes the host address and HTTP port as a sensor named main.uri.
     - type: org.apache.brooklyn.enricher.stock.Transformer
       brooklyn.config:
         enricher.targetSensor: main.uri
