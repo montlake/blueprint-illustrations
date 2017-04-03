@@ -1,18 +1,22 @@
 brooklyn.catalog:
   version: "0.1"
 
-  items:
-    - id: base-software-process
-      name: "Base Software Process"
-      description: |
-        A base entity for use by richer software processes.
-      itemType: entity
-      item:
-        type: org.apache.brooklyn.entity.software.base.VanillaSoftwareProcess
-        id: base-software-process
-        brooklyn.config:
-          dontRequireTtyForSudo: true
-          provisioning.properties:
-            osFamily: centos
-            osVersionRegex: 7
+  id: base-software-process
+  name: Base Software Process
+  itemType: entity
 
+  description: |
+    A base entity for use by richer software processes.
+
+  publish:
+    license_code: Apache-2.0
+    overview: README.md
+
+  item:
+    type: org.apache.brooklyn.entity.software.base.VanillaSoftwareProcess
+    id: base-software-process
+    brooklyn.config:
+      dontRequireTtyForSudo: true
+      provisioning.properties:
+        osFamily: centos
+        osVersionRegex: 7
