@@ -36,7 +36,7 @@ variable "aws_amis" {
 
 variable "node_repo_url" {
   description = "The repository to clone when launching the Node cluster"
-  default     = "https://github.com/justinThompson/todo-app.git"
+  default     = "https://github.com/cloudsoft/todo-mvc.git"
 }
 
 variable "node_app_filename" {
@@ -46,5 +46,5 @@ variable "node_app_filename" {
 
 variable "database_creation_script" {
   description = "Used to initialise the database",
-  default     = "https://raw.githubusercontent.com/justinThompson/todo-app/master/db-creation-script.sql"
+  default     = "https://raw.githubusercontent.com/cloudsoft/todo-mvc/master/server/db-creation-script.sql"
 }

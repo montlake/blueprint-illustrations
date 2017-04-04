@@ -21,7 +21,7 @@ brooklyn.catalog:
       type: 'mariadb-node:0.1'
       name: MariaDB
       brooklyn.config:
-        mariadb.datastore.creation.script.url: https://raw.githubusercontent.com/justinThompson/todo-app/master/db-creation-script.sql
+        mariadb.datastore.creation.script.url: https://raw.githubusercontent.com/cloudsoft/todo-mvc/master/server/db-creation-script.sql
         # These values are set in db-creation-script.sql. With a little work they could also
         # be injected into the creation script.
         db.user: brooklyn
@@ -37,7 +37,7 @@ brooklyn.catalog:
       name: NodeJS
       brooklyn.config:
         metrics.port: 8091
-        nodejs.gitRepo.url: https://github.com/justinThompson/todo-app.git
+        nodejs.gitRepo.url: https://github.com/cloudsoft/todo-mvc.git
         nodejs.app.fileName: app.js
         nodejs.app.name: Todo App
         shell.env:
