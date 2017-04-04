@@ -90,3 +90,7 @@ services:
         maxPoolSize: 5
         resizeUpStabilizationDelay: 1m
         resizeDownStabilizationDelay: 2m
+
+  # Presents a runtime view of network security group membership
+  - type: io.cloudsoft.amp.networking.entity.NetworkSecurityVisualizer
+    name: Network Security Visualizer
