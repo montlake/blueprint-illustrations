@@ -30,12 +30,6 @@ brooklyn.catalog:
           The NodeJS application file to start
         constraints:
           - required
-      - name: nodejs.app.name
-        label: "Node JS Application Name"
-        description: |
-          The name of the NodeJS application
-        constraints:
-          - required
       # http.port is the convention for entities used by load balancers.
       - name: http.port
         label: "NodeJS Port"

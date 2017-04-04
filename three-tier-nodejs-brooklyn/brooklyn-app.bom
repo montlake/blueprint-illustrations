@@ -39,7 +39,6 @@ brooklyn.catalog:
         metrics.port: 8091
         nodejs.gitRepo.url: https://github.com/cloudsoft/todo-mvc.git
         nodejs.app.fileName: app.js
-        nodejs.app.name: Todo App
         shell.env:
           METRICS_PORT: $brooklyn:config("metrics.port")
           DB_HOST: $brooklyn:entity("db").attributeWhenReady("host.subnet.address")
