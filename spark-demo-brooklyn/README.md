@@ -3,7 +3,7 @@
 ## Overview
 
 
-`app.yaml` describes a cluster of [Apache Spark](https://github.com/brooklyncentral/brooklyn-spark) nodes to which Spark applications can subsequently be deployed. It uses definitions from the [brooklyn-spark](https://github.com/brooklyncentral/brooklyn-spark) project written by the [Apache Brooklyn](https://github.com/apache/brooklyn) community.
+`app.yaml` describes a cluster of [Apache Spark](https://spark.apache.org/) nodes to which Spark applications can subsequently be deployed. It uses definitions from the [brooklyn-spark](https://github.com/brooklyncentral/brooklyn-spark) project written by the [Apache Brooklyn](https://brooklyn.apache.org/) community.
 
 ## Usage
 
