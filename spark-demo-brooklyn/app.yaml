@@ -1,0 +1,37 @@
+# uses the brooklyn-spark node
+name: Example App
+
+location: jclouds:aws-ec2:us-west-2
+
+services:
+- type: org.apache.brooklyn.entity.stock.BasicApplication
+  id: app
+
+  brooklyn.children:
+  - type: org.apache.brooklyn.entity.group.DynamicCluster
+    description: An Apache Spark cluster
+    name: Spark Cluster
+    id: spark-cluster
+    brooklyn.config:
+      cluster.initial.size: 3
+
+    firstMemberSpec:
+      $brooklyn:entitySpec:
+        type: spark-node
+        name: Spark Master
+        id: spark-master
+        brooklyn.config:
+          # configure the spark app jars you want to submit
+          runtimeFiles:
+            http://dl.bintray.com/typesafe/maven-releases/org/apache/spark/spark-examples_2.11/1.6.0-typesafe-001/spark-examples_2.11-1.6.0-typesafe-001.jar: /tmp/spark-examples_2.11-1.6.0-typesafe-001.jar
+
+    memberSpec:
+      $brooklyn:entitySpec:
+        type: spark-node
+        name: Spark Worker
+        id: spark-worker
+        brooklyn.config:
+          spark.master.url: $brooklyn:entity("spark-master").attributeWhenReady("spark.url")
+          # configure the spark app jars you want to submit
+          runtimeFiles:
+            http://dl.bintray.com/typesafe/maven-releases/org/apache/spark/spark-examples_2.11/1.6.0-typesafe-001/spark-examples_2.11-1.6.0-typesafe-001.jar: /tmp/spark-examples_2.11-1.6.0-typesafe-001.jar
