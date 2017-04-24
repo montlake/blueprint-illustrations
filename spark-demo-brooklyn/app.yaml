@@ -6,6 +6,13 @@ location: jclouds:aws-ec2:us-west-2
 services:
 - type: org.apache.brooklyn.entity.stock.BasicApplication
   id: app
+  brooklyn.enrichers:
+    # Propagate the URI published by the load balancer to the root application.
+    - type: org.apache.brooklyn.enricher.stock.Propagator
+      brooklyn.config:
+        producer: $brooklyn:entity("spark-cluster")
+        propagating:
+          - $brooklyn:sensor("main.uri")
 
   brooklyn.children:
   - type: org.apache.brooklyn.entity.group.DynamicCluster
@@ -14,6 +21,13 @@ services:
     id: spark-cluster
     brooklyn.config:
       cluster.initial.size: 3
+    brooklyn.enrichers:
+      - type: org.apache.brooklyn.enricher.stock.Aggregator
+        brooklyn.config:
+          enricher.sourceSensor: $brooklyn:sensor("master.main.uri")
+          enricher.targetSensor: $brooklyn:sensor("main.uri")
+          enricher.aggregating.fromMembers: true
+          enricher.aggregator.excludeBlank: true
 
     firstMemberSpec:
       $brooklyn:entitySpec:
@@ -24,6 +38,13 @@ services:
           # configure the spark app jars you want to submit
           runtimeFiles:
             http://dl.bintray.com/typesafe/maven-releases/org/apache/spark/spark-examples_2.11/1.6.0-typesafe-001/spark-examples_2.11-1.6.0-typesafe-001.jar: /tmp/spark-examples_2.11-1.6.0-typesafe-001.jar
+        brooklyn.enrichers:
+          - type: org.apache.brooklyn.enricher.stock.Transformer
+            brooklyn.config:
+              enricher.sourceSensor: $brooklyn:sensor("main.uri")
+              enricher.targetSensor: $brooklyn:sensor("master.main.uri")
+              enricher.targetValue: $brooklyn:attributeWhenReady("main.uri")
+
 
     memberSpec:
       $brooklyn:entitySpec:
