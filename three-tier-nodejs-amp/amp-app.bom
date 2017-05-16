@@ -1,0 +1,82 @@
+brooklyn.catalog:
+  version: 1.0.0
+  items:
+    - id: three-tier-nodejs-with-network-security
+      name: Three-tier Node.js App with Network Security
+      itemType: template
+      item:
+      services:
+        - type: org.apache.brooklyn.entity.stock.BasicApplication
+          brooklyn.children:
+            - type: app-load-balancer
+              id: load-balancer
+              brooklyn.initializers:
+                - type: io.cloudsoft.amp.networking.NetworkSecurityCustomizer
+                  brooklyn.config:
+                    enforcement: mandatory
+                    networks:
+                      - frontend
+                      - public
+                    networks-ingress:
+                      - network: public
+                        exposing:
+                          - proxy.http.port
+            - type: app-database
+              id: db
+              brooklyn.initializers:
+                - type: io.cloudsoft.amp.networking.NetworkSecurityCustomizer
+                  brooklyn.config:
+                    enforcement: mandatory
+                    networks:
+                      - backend
+                    networks-ingress:
+                      - network: appservers
+                        exposing:
+                          - port
+            - type: org.apache.brooklyn.entity.group.DynamicCluster
+              name: My Cluster
+              id: cluster
+              brooklyn.config:
+                initialSize: 2
+                memberSpec:
+                  '$brooklyn:entitySpec':
+                    type: app-web-member
+                    brooklyn.initializers:
+                      - type: io.cloudsoft.amp.networking.NetworkSecurityCustomizer
+                        brooklyn.config:
+                          enforcement: mandatory
+                          networks:
+                            - appservers
+                          networks-ingress:
+                            - network: frontend
+                              exposing:
+                                - http.port
+              brooklyn.policies:
+                - type: org.apache.brooklyn.policy.ha.ServiceReplacer
+                - type: org.apache.brooklyn.policy.autoscaling.AutoScalerPolicy
+                  brooklyn.config:
+                    metric: '$brooklyn:sensor("nodejs.metrics.read.average")'
+                    metricUpperBound: 100
+                    metricLowerBound: 50
+                    minPoolSize: 2
+                    maxPoolSize: 5
+                    resizeUpStabilizationDelay: 1m
+                    resizeDownStabilizationDelay: 2m
+              brooklyn.enrichers:
+                - type: org.apache.brooklyn.enricher.stock.Aggregator
+                  brooklyn.config:
+                    uniqueTag: nodejs-cluster-cpu-average
+                    enricher.sourceSensor: '$brooklyn:sensor("nodejs.metrics.read")'
+                    enricher.targetSensor: '$brooklyn:sensor("nodejs.metrics.read.average")'
+                    enricher.aggregating.fromMembers: true
+                    transformation: average
+            - type: io.cloudsoft.amp.networking.entity.NetworkSecurityVisualizer
+              name: Network Security Visualizer
+          brooklyn.enrichers:
+            - type: org.apache.brooklyn.enricher.stock.Propagator
+              brooklyn.config:
+                producer: '$brooklyn:entity("load-balancer")'
+                sensorMapping:
+                  main.uri.mapped.public: >-
+                    $brooklyn:sensor("org.apache.brooklyn.core.entity.Attributes",
+                    "main.uri")
