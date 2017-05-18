@@ -2,7 +2,7 @@
 
 ## Overview
 
-[brooklyn-app.bom](brooklyn-app.bom) is an [Apache Brooklyn](https://brooklyn.apache.org/) 
+[brooklyn-app.bom](brooklyn-catalog.bom) is an [Apache Brooklyn](https://brooklyn.apache.org/) 
 blueprint describing a simple three-tier application:
 * An instance running MariaDB.
 * A cluster of Node.js servers.
