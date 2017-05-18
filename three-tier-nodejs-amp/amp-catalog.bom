@@ -1,0 +1,102 @@
+brooklyn.catalog:
+  version: "0.1"
+
+  description: |
+    App-specific specializations of generic entities with AMP features.
+
+  items:
+  - id: app-web-amp-template
+    itemType: template
+    item:
+      services:
+      - type: org.apache.brooklyn.entity.stock.BasicApplication
+        name: Three-tier Node.js App with Network Security
+
+        brooklyn.enrichers:
+        # Propagate the URI published by the load balancer to the root application.
+        - type: org.apache.brooklyn.enricher.stock.Propagator
+          brooklyn.config:
+            producer: $brooklyn:entity("load-balancer")
+            sensorMapping:
+              main.uri.mapped.public: $brooklyn:sensor("org.apache.brooklyn.core.entity.Attributes", "main.uri")
+
+        brooklyn.children:
+        - type: 'app-load-balancer:0.1'
+          id: load-balancer
+          brooklyn.initializers:
+          - type: io.cloudsoft.amp.networking.NetworkSecurityCustomizer
+            brooklyn.config:
+              # enforcement may be "mandatory", "optional" or "disabled". The default is mandatory.
+              enforcement: mandatory
+              networks:
+              - frontend
+              - public
+              networks-ingress:
+              - network: public
+                exposing:
+                - proxy.http.port
+
+        - type: 'app-database:0.1'
+          id: db
+          brooklyn.initializers:
+          # The database exposes its port to the app servers
+          - type: io.cloudsoft.amp.networking.NetworkSecurityCustomizer
+            brooklyn.config:
+              enforcement: mandatory
+              networks:
+              - backend
+              networks-ingress:
+              - network: appservers
+                exposing:
+                - port
+
+        - type: org.apache.brooklyn.entity.group.DynamicCluster
+          name: My Cluster
+          id: cluster
+          brooklyn.config:
+            initialSize: 2
+            memberSpec:
+              $brooklyn:entitySpec:
+                type: 'app-web-member:0.1'
+                brooklyn.initializers:
+                # Members of the cluster expose their http.port to the frontend.
+                - type: io.cloudsoft.amp.networking.NetworkSecurityCustomizer
+                  brooklyn.config:
+                    enforcement: mandatory
+                    networks:
+                    - appservers
+                    networks-ingress:
+                    - network: frontend
+                      # Note that the metrics endpoint isn't exposed, meaning that the sensitive data
+                      # is only visible to the management network.
+                      exposing:
+                      - http.port
+
+          brooklyn.enrichers:
+          # Transform the average on each member into an average across the cluster.
+          - type: org.apache.brooklyn.enricher.stock.Aggregator
+            brooklyn.config:
+              uniqueTag: nodejs-cluster-cpu-average
+              enricher.sourceSensor: $brooklyn:sensor("nodejs.metrics.read")
+              enricher.targetSensor: $brooklyn:sensor("nodejs.metrics.read.average")
+              enricher.aggregating.fromMembers: true
+              transformation: average
+
+          brooklyn.policies:
+          # Replaces failed cluster members
+          - type: org.apache.brooklyn.policy.ha.ServiceReplacer
+
+          # Autoscales per the average number of reads across the cluster
+          - type: org.apache.brooklyn.policy.autoscaling.AutoScalerPolicy
+            brooklyn.config:
+              metric: $brooklyn:sensor("nodejs.metrics.read.average")
+              metricUpperBound: 100
+              metricLowerBound: 50
+              minPoolSize: 2
+              maxPoolSize: 5
+              resizeUpStabilizationDelay: 1m
+              resizeDownStabilizationDelay: 2m
+
+        # Presents a runtime view of network security group membership
+        - type: io.cloudsoft.amp.networking.entity.NetworkSecurityVisualizer
+          name: Network Security Visualizer

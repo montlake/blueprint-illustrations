@@ -19,12 +19,16 @@ Once the server is running add [locations](https://docs.cloudsoft.io/locations/f
 for the clouds you want to target.
 
 Add `base-software-process.bom`, `nodejs.bom`, `mariadb.bom` and `brooklyn-app.bom` to the catalog as 
-per the instructions for Apache Brooklyn, then add `amp-app.bom` from this project.
+per the instructions for Apache Brooklyn, then add `amp-catalog.bom` from this project.
 
-Use the AMP UI to deploy `example-app-with-network-security` to your chosen location.
+Use the Brooklyn CLI tool to deploy `app.yaml`:
+```
+br deploy app.yaml
+```
 
 The auto-scaling policies on the Node cluster respond to the average number of `GET` requests to each
 member. Scale-up occurs when the average crosses 100 reqs/sec and scale-down occurs when the average
-falls below 50 reqs/sec.
+falls below 50 reqs/sec. The [Brooklyn entity for Apache JMeter](https://github.com/cloudsoft/jmeter-entity/)
+is a useful way to demonstrate this.
 
 To destroy the deployment use the `stop` effector on the application.

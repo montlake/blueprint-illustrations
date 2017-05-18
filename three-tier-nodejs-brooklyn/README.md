@@ -27,7 +27,10 @@ br catalog add ./nodejs.bom
 br catalog add ./brooklyn-app.bom
 ```
 
-Then use the Brooklyn UI to deploy `example-brooklyn-app` to your chosen location.
+Then deploy `app.yaml`:
+```
+br deploy app.yaml
+```
 
 The auto-scaling policies on the Node cluster respond to the average number of `GET` requests to each
 member. Scale-up occurs when the average crosses 100 reqs/sec and scale-down occurs when the average

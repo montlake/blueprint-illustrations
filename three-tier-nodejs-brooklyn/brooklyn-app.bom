@@ -101,3 +101,62 @@ brooklyn.catalog:
           period: 5s
           targetType: java.lang.Double
 
+  # Incorporates all the components and includes scaling policies on the cluster.
+  - id: app-web-brooklyn-template
+    itemType: template
+    item:
+      services:
+      - type: org.apache.brooklyn.entity.stock.BasicApplication
+        name: Three-tier Node.js app
+
+        brooklyn.enrichers:
+        # Propagate the URI published by the load balancer to the root application.
+        - type: org.apache.brooklyn.enricher.stock.Propagator
+          brooklyn.config:
+            producer: $brooklyn:entity("load-balancer")
+            sensorMapping:
+              main.uri.mapped.public: $brooklyn:sensor("org.apache.brooklyn.core.entity.Attributes", "main.uri")
+
+        brooklyn.children:
+        - type: 'app-load-balancer:0.1'
+          id: load-balancer
+
+        - type: 'app-database:0.1'
+          id: db
+
+        # An auto-scaling cluster of Node.js applications.
+        - type: org.apache.brooklyn.entity.group.DynamicCluster
+          name: My Cluster
+          id: cluster
+          brooklyn.config:
+            initialSize: 2
+            memberSpec:
+              $brooklyn:entitySpec:
+                type: 'app-web-member:0.1'
+                brooklyn.config:
+                  database: $brooklyn:entity("mariadb")
+
+          brooklyn.enrichers:
+          # Transform the average on each member into an average across the cluster.
+          - type: org.apache.brooklyn.enricher.stock.Aggregator
+            brooklyn.config:
+              uniqueTag: nodejs-cluster-cpu-average
+              enricher.sourceSensor: $brooklyn:sensor("nodejs.metrics.read")
+              enricher.targetSensor: $brooklyn:sensor("nodejs.metrics.read.average")
+              enricher.aggregating.fromMembers: true
+              transformation: average
+
+          brooklyn.policies:
+          # Replaces failed cluster members
+          - type: org.apache.brooklyn.policy.ha.ServiceReplacer
+
+          # Autoscales per the average number of reads across the cluster
+          - type: org.apache.brooklyn.policy.autoscaling.AutoScalerPolicy
+            brooklyn.config:
+              metric: $brooklyn:sensor("nodejs.metrics.read.average")
+              metricLowerBound: 50
+              metricUpperBound: 100
+              minPoolSize: 2
+              maxPoolSize: 5
+              resizeUpStabilizationDelay: 1m
+              resizeDownStabilizationDelay: 2m
