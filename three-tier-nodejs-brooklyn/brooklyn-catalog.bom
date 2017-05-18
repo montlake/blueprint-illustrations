@@ -103,6 +103,10 @@ brooklyn.catalog:
 
   # Incorporates all the components and includes scaling policies on the cluster.
   - id: app-web-brooklyn-template
+    name: Three-tier Node.js app
+    description: |
+      Deploys a cluster of Node.js servers fronted by Nginx and backed by MariaDB.
+      The cluster has policies to autoscale and to handle failures.
     itemType: template
     item:
       services:

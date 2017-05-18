@@ -1,11 +1,13 @@
 brooklyn.catalog:
   version: "0.1"
 
-  description: |
-    App-specific specializations of generic entities with AMP features.
-
   items:
   - id: app-web-amp-template
+    name: Three-tier Node.js app with Network Security
+    description: |
+      Deploys a cluster of Node.js servers fronted by Nginx and backed by MariaDB.
+      The cluster has policies to autoscale and to handle failures. Network security
+      rules restrict access to components.
     itemType: template
     item:
       services:
