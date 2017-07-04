@@ -1,6 +1,13 @@
 brooklyn.catalog:
   version: "0.1"
 
+  publish:
+    description: >
+      A simple three-tier application (nginx load balancer, node.js webserver cluster,
+      MariaDB database) illustrating Cloudsoft AMP's network security features.
+    license_code: "Apache-2.0"
+    overview: "README.md"
+
   items:
   - id: app-web-amp-template
     name: Three-tier Node.js app with Network Security
