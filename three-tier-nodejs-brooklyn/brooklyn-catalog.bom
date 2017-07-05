@@ -5,6 +5,7 @@ brooklyn.catalog:
     App-specific specializations of generic entities.
 
   items:
+  - https://raw.githubusercontent.com/Montlake/blueprint-illustrations/master/three-tier-nodejs-brooklyn/base-software-process.bom
   - https://raw.githubusercontent.com/Montlake/blueprint-illustrations/master/three-tier-nodejs-brooklyn/nodejs.bom
   - https://raw.githubusercontent.com/Montlake/blueprint-illustrations/master/three-tier-nodejs-brooklyn/mariadb.bom
 
