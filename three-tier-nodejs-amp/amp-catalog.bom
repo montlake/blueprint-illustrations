@@ -1,6 +1,8 @@
 brooklyn.catalog:
   version: "0.1"
 
+  id: app-web-amp-netsec
+  name: AMP Network Security Three Tier App
   publish:
     description: >
       A simple three-tier application (nginx load balancer, node.js webserver cluster,
