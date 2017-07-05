@@ -5,6 +5,9 @@ brooklyn.catalog:
   iconUrl: "https://mariadb.com/themes/custom/mariadb/logo.svg"
   itemType: entity
 
+  brooklyn.libraries:
+  - https://raw.githubusercontent.com/Montlake/blueprint-illustrations/master/three-tier-nodejs-brooklyn/base-software-process.bom
+
   description: |
     MariaDB
 

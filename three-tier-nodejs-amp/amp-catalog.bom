@@ -1,6 +1,9 @@
 brooklyn.catalog:
   version: "0.1"
 
+  brooklyn.libraries:
+  - https://raw.githubusercontent.com/Montlake/blueprint-illustrations/master/three-tier-nodejs-brooklyn/brooklyn-catalog.bom
+
   id: app-web-amp-netsec
   name: AMP Network Security Three Tier App
   publish:
