@@ -1,14 +1,13 @@
 brooklyn.catalog:
   version: "0.1"
 
-  brooklyn.libraries:
-  - https://raw.githubusercontent.com/Montlake/blueprint-illustrations/master/three-tier-nodejs-brooklyn/nodejs.bom
-  - https://raw.githubusercontent.com/Montlake/blueprint-illustrations/master/three-tier-nodejs-brooklyn/mariadb.bom
-
   description: |
     App-specific specializations of generic entities.
 
   items:
+  - https://raw.githubusercontent.com/Montlake/blueprint-illustrations/master/three-tier-nodejs-brooklyn/nodejs.bom
+  - https://raw.githubusercontent.com/Montlake/blueprint-illustrations/master/three-tier-nodejs-brooklyn/mariadb.bom
+
   - id: app-load-balancer
     itemType: entity
     item:

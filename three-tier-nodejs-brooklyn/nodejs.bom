@@ -5,9 +5,6 @@ brooklyn.catalog:
   iconUrl: "https://nodejs.org/static/images/logo.svg"
   itemType: entity
 
-  brooklyn.libraries:
-  - https://raw.githubusercontent.com/Montlake/blueprint-illustrations/master/three-tier-nodejs-brooklyn/base-software-process.bom
-
   description: |
     NodeJS
 
@@ -15,72 +12,74 @@ brooklyn.catalog:
     license_code: Apache-2.0
     overview: README.md
 
-  item:
-    type: base-software-process:0.1
-    name: nodejs Node
-    brooklyn.parameters:
-      - name: nodejs.gitRepo.url
-        label: "Git Repository URL"
-        description: |
-          The Git repository where the application is hosted that will be cloned when
-          installing the entity.
-        constraints:
-          # Fail if not given.
-          - required
-      - name: nodejs.app.fileName
-        label: "File Name of the NodeJS App"
-        description: |
-          The NodeJS application file to start
-        constraints:
-          - required
-      # http.port is the convention for entities used by load balancers.
-      - name: http.port
-        label: "NodeJS Port"
-        default: 8000
-        type: port
-        constraints:
-          - required
+  items:
+  - https://raw.githubusercontent.com/Montlake/blueprint-illustrations/master/three-tier-nodejs-brooklyn/base-software-process.bom
+  - item:
+      type: base-software-process:0.1
+      name: nodejs Node
+      brooklyn.parameters:
+        - name: nodejs.gitRepo.url
+          label: "Git Repository URL"
+          description: |
+            The Git repository where the application is hosted that will be cloned when
+            installing the entity.
+          constraints:
+            # Fail if not given.
+            - required
+        - name: nodejs.app.fileName
+          label: "File Name of the NodeJS App"
+          description: |
+            The NodeJS application file to start
+          constraints:
+            - required
+        # http.port is the convention for entities used by load balancers.
+        - name: http.port
+          label: "NodeJS Port"
+          default: 8000
+          type: port
+          constraints:
+            - required
 
-    brooklyn.config:
-      shell.env:
-        NODEJS_GITREPO_URL: $brooklyn:config("nodejs.gitRepo.url")
-        NODEJS_APP_FILENAME: $brooklyn:config("nodejs.app.fileName")
-        SERVER_PORT: $brooklyn:attributeWhenReady("http.port")
-
-      pre.install.command: |
-        sudo systemctl stop firewalld
-        sudo systemctl disable firewalld
-        sudo yum update -y
-
-      install.command: |
-        sudo yum install -y epel-release
-        sudo yum install -y nodejs
-        sudo yum install -y git
-
-      customize.command: |
-        git clone --depth 1 ${NODEJS_GITREPO_URL} app
-        cd app
-        npm --no-color install
-
-      launch.command: |
-        nohup node app/${NODEJS_APP_FILENAME} >>console.log 2>&1 &
-
-      checkRunning.command: |
-        pgrep node
-
-      stop.command: |
-        pkill node
-
-    brooklyn.enrichers:
-    # Publishes the host address and HTTP port as a sensor named main.uri.
-    - type: org.apache.brooklyn.enricher.stock.Transformer
       brooklyn.config:
-        enricher.targetSensor: main.uri
-        enricher.triggerSensors:
-        - host.address
-        - http.port
-        enricher.targetValue:
-          $brooklyn:formatString:
-          - "http://%s:%s"
-          - $brooklyn:attributeWhenReady("host.address")
-          - $brooklyn:attributeWhenReady("http.port")
+        shell.env:
+          NODEJS_GITREPO_URL: $brooklyn:config("nodejs.gitRepo.url")
+          NODEJS_APP_FILENAME: $brooklyn:config("nodejs.app.fileName")
+          SERVER_PORT: $brooklyn:attributeWhenReady("http.port")
+
+        pre.install.command: |
+          sudo systemctl stop firewalld
+          sudo systemctl disable firewalld
+          sudo yum update -y
+
+        install.command: |
+          sudo yum install -y epel-release
+          sudo yum install -y nodejs
+          sudo yum install -y git
+
+        customize.command: |
+          git clone --depth 1 ${NODEJS_GITREPO_URL} app
+          cd app
+          npm --no-color install
+
+        launch.command: |
+          nohup node app/${NODEJS_APP_FILENAME} >>console.log 2>&1 &
+
+        checkRunning.command: |
+          pgrep node
+
+        stop.command: |
+          pkill node
+
+      brooklyn.enrichers:
+      # Publishes the host address and HTTP port as a sensor named main.uri.
+      - type: org.apache.brooklyn.enricher.stock.Transformer
+        brooklyn.config:
+          enricher.targetSensor: main.uri
+          enricher.triggerSensors:
+          - host.address
+          - http.port
+          enricher.targetValue:
+            $brooklyn:formatString:
+            - "http://%s:%s"
+            - $brooklyn:attributeWhenReady("host.address")
+            - $brooklyn:attributeWhenReady("http.port")
