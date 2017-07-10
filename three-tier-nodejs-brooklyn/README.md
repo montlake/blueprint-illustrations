@@ -24,7 +24,7 @@ and `brooklyn-app.bom` to the catalog:
 br catalog add ./base-software-process.bom
 br catalog add ./mariadb.bom
 br catalog add ./nodejs.bom
-br catalog add ./brooklyn-app.bom
+br catalog add ./brooklyn-catalog.bom
 ```
 
 Then deploy `app.yaml`:
