@@ -33,8 +33,7 @@ brooklyn.catalog:
           MARIADB_DATASTORE_CREATION_SCRIPT_URL: $brooklyn:config("mariadb.datastore.creation.script.url")
 
         pre.install.command: |
-          sudo systemctl stop firewalld
-          sudo systemctl disable firewalld
+          (sudo systemctl stop firewalld && sudo systemctl disable firewalld) || echo "Could not disable firewalld"
           sudo yum update -y
 
         install.command: |
