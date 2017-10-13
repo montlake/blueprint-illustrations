@@ -46,8 +46,7 @@ brooklyn.catalog:
           SERVER_PORT: $brooklyn:attributeWhenReady("http.port")
 
         pre.install.command: |
-          sudo systemctl stop firewalld
-          sudo systemctl disable firewalld
+          (sudo systemctl stop firewalld && sudo systemctl disable firewalld) || echo "Could not disable firewalld"
           sudo yum update -y
 
         install.command: |
